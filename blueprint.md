@@ -1,35 +1,26 @@
-# Numeral System Base Simulation Blueprint
+# Numeral System Base Simulation (Point Plot) Blueprint
 
 ## Project Overview
-This project is a visual simulation that explores the behavior of natural numbers when their digit sums are iteratively used as bases for their next representation. It aims to classify each number's final state into fixed points, 2-cycles, or 3+ cycles.
+This tool focuses on the iterative transformation of a single input $N$. The core logic involves using the sum of digits of $N$ in its current base as the new base for the next step. The goal is to visualize the trajectory of these bases using a scatter plot of $(b_n, b_{n+1})$.
 
 ## Features & Design
-- **Iterative Process**: For each number $N \in [1, 1000]$, the simulation calculates the sum of digits in the current base, then uses that sum as the new base.
-- **Classification**:
-    - **Fixed Point (Period 1)**: The base stabilizes (e.g., $N=15$ stabilizes at base 3).
-    - **2-Cycle (Period 2)**: The base alternates between two values.
-    - **3+ Cycle (Period 3+)**: The base cycles through three or more values.
-    - **Termination**: If the base reaches 1 or 0, the process stops.
-- **Visualization**:
-    - A horizontal layout mapping $N$ from 1 to 1000.
-    - Color-coded bars/dots based on the period of the final state.
-    - Interactive tooltip showing the sequence and period length on hover.
-- **Aesthetics**: Modern, clean UI with high-contrast colors for different states and smooth canvas rendering.
-
-## Current Plan
-1.  **Logic Implementation**:
-    - Function `getSumOfDigits(n, base)` to handle base conversion and summing.
-    - Function `analyzeNumber(n)` to iterate and detect cycles using a history array.
-2.  **Visualization Implementation**:
-    - Use HTML5 Canvas to draw 1000 bars.
-    - Implement color mapping: Blue (Fixed), Red (2-cycle), Green (3+ cycle), Gray (Terminated).
-3.  **Interactivity**:
-    - Add a mousemove listener to detect which number is being hovered.
-    - Display details in a floating tooltip or overlay.
-4.  **Integration**:
-    - Combine HTML, CSS, and JS into `index.html` as requested by the user.
+- **Single Input $N$**: Users can input any natural number $N$.
+- **Iterative Process**: 
+    - Start with base 10 (or user-defined initial base).
+    - Calculate $b_{n+1} = \text{sum of digits of } N \text{ in base } b_n$.
+    - Maximum 50 steps.
+    - Termination: $b \le 1$ or cycle detection.
+- **Visualization (Chart.js)**:
+    - **Scatter Plot**: X-axis represents $b_n$, Y-axis represents $b_{n+1}$.
+    - **Color Coding**: Normal steps are blue; points within a detected cycle are highlighted in red.
+    - **Line Tracing**: Optional line connecting points to show the sequence.
+- **UI/UX**:
+    - Input field for $N$.
+    - "Simulate" button to trigger calculation.
+    - Results table/summary showing the sequence.
 
 ## Implementation Steps
-- [ ] Create `index.html` with logic and canvas drawing.
-- [ ] Implement hover detection and data display.
-- [ ] Style the UI for a polished look.
+- [ ] Clean up existing `index.html` and implement the new single-input logic.
+- [ ] Integrate Chart.js via CDN.
+- [ ] Implement the $(b_n, b_{n+1})$ mapping and cycle detection.
+- [ ] Add input controls and responsive styling.
