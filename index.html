@@ -292,7 +292,8 @@
             const state = getNextState(current);
             if (state.next === current) return { startValue: startN, type: 'fixed', fixedPoint: current };
             if (historySet.has(state.next)) {
-                const cycleArr = history.slice(history.indexOf(state.next)).concat(state.next);
+                // 정확한 주기 슬라이싱: 첫 발생 지점부터 현재 숫자까지가 하나의 주기
+                const cycleArr = history.slice(history.indexOf(state.next)).concat(current);
                 return { startValue: startN, type: 'cycle', cycleValues: cycleArr };
             }
             if (state.next.toString().length > 10000) return { startValue: startN, type: 'divergent', reason: '자릿수 10,000자 초과' };
@@ -301,13 +302,13 @@
         return { startValue: startN, type: 'divergent', reason: '반복 횟수 제한 초과' };
     }
 
-    async function runAnalysis() {
+    function runAnalysis() {
         const minStr = document.getElementById('minStart').value, maxStr = document.getElementById('maxStart').value;
         if (!minStr || !maxStr) return alert("시작값을 입력하세요.");
         const min = BigInt(minStr), max = BigInt(maxStr), iter = parseInt(document.getElementById('rangeIter').value);
         fullResults = { fixed: [], cycle: [], divergent: [] };
         const total = Number(max - min + 1n); let processed = 0, current = min;
-        async function process() {
+        function process() {
             for (let i = 0; i < 50 && current <= max; i++) {
                 const res = classifyDetailed(current, iter);
                 fullResults[res.type].push(res);
@@ -315,7 +316,12 @@
             }
             aProgress.textContent = `진행률: ${Math.round((processed/total)*100)}% (${processed}/${total})`;
             drawBarChart();
-            if (current <= max) setTimeout(process, 0); else { aProgress.textContent = `분석 완료 (총 ${total}개)`; saveToHistory(min, max, iter); }
+            if (current <= max) {
+                requestAnimationFrame(process);
+            } else {
+                aProgress.textContent = `분석 완료 (총 ${total}개)`;
+                saveToHistory(min, max, iter);
+            }
         }
         process();
     }
@@ -402,4 +408,4 @@
     window.onload = () => { window.dispatchEvent(new Event('resize')); generateGraphData(); startVisAnimation(); };
 </script>
 </body>
-</html>
+</html> you
