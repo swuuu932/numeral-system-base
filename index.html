@@ -231,7 +231,7 @@
 
     /** [화면 1] 시각화 로직 (축약 버전) **/
     const gCanvas = document.getElementById('graphCanvas'); const gCtx = gCanvas.getContext('2d');
-    const NODE_RADIUS = 35; let nodes = [], edges = [], selectedNode = null, draggedNode = null, animationId = null, simulationAlpha = 1.0;
+    const NODE_RADIUS = 20; let nodes = [], edges = [], selectedNode = null, draggedNode = null, animationId = null, simulationAlpha = 1.0;
 
     function generateGraphData() {
         nodes = []; edges = []; simulationAlpha = 1.0;
