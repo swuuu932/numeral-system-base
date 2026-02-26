@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>진법 변환 수학 시뮬레이터</title>
+    <title>진법 변환 수학 시뮬레이터 (Pro)</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -27,7 +27,6 @@
             overflow: hidden;
         }
 
-        /* SPA Navigation */
         nav {
             background-color: var(--nav-bg);
             padding: 0.5rem 1rem;
@@ -49,27 +48,11 @@
             transition: all 0.2s;
         }
 
-        nav button.active {
-            color: white;
-            background: #334155;
-        }
+        nav button.active { color: white; background: #334155; }
 
-        /* View Layout */
-        .view-container {
-            flex: 1;
-            display: flex;
-            position: relative;
-        }
-
-        .view {
-            display: none;
-            width: 100%;
-            height: 100%;
-        }
-
-        .view.active {
-            display: flex;
-        }
+        .view-container { flex: 1; display: flex; position: relative; overflow: hidden; }
+        .view { display: none; width: 100%; height: 100%; overflow: hidden; }
+        .view.active { display: flex; }
 
         /* Sidebar Styles */
         .sidebar {
@@ -81,19 +64,6 @@
             gap: 1.5rem;
             box-shadow: 4px 0 15px rgba(0,0,0,0.3);
             z-index: 10;
-        }
-
-        h1 { font-size: 1.75rem; margin: 0; color: var(--primary); }
-
-        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
-        label { font-size: 1.1rem; color: #94a3b8; }
-        input {
-            background: #0f172a;
-            border: 1px solid #334155;
-            padding: 0.8rem;
-            border-radius: 6px;
-            color: white;
-            font-size: 1.2rem;
         }
 
         .action-btn {
@@ -109,51 +79,40 @@
         }
         .action-btn:hover { filter: brightness(1.2); }
 
-        .info-panel {
-            margin-top: auto;
-            padding: 1.2rem;
-            background: #0f172a;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-
-        /* Canvas Areas */
-        .main-content {
-            flex: 1;
-            position: relative;
-        }
-
+        .main-content { flex: 1; position: relative; }
         canvas { width: 100%; height: 100%; display: block; }
 
-        .legend {
-            position: absolute;
-            bottom: 2rem;
-            right: 2rem;
-            background: rgba(30, 41, 59, 0.8);
-            padding: 1.2rem;
-            border-radius: 8px;
-            backdrop-filter: blur(4px);
-            font-size: 1.1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
+        /* Detail View Styles */
+        #view-details { flex-direction: column; overflow-y: auto; padding: 2rem; background: var(--bg); display: none; }
+        #view-details.active { display: flex; }
+        
+        .detail-header { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
+        .back-btn { background: #334155; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 6px; cursor: pointer; }
+        
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; padding-bottom: 4rem; }
+        .result-card { background: var(--card); padding: 1.5rem; border-radius: 12px; border-left: 6px solid #ccc; }
+        .result-card.fixed { border-left-color: var(--fixed); }
+        .result-card.cycle { border-left-color: var(--cycle); }
+        .result-card.divergent { border-left-color: var(--divergent); }
+        .result-card h4 { margin: 0 0 0.5rem 0; color: var(--primary); word-break: break-all; }
+        .result-card p { margin: 0.25rem 0; font-size: 0.95rem; color: #cbd5e1; }
+        .result-card .val { font-family: monospace; color: white; background: #0f172a; padding: 2px 4px; border-radius: 4px; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Original styles from previous steps */
+        h1 { font-size: 1.75rem; margin: 0; color: var(--primary); }
+        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-size: 1.1rem; color: #94a3b8; }
+        input { background: #0f172a; border: 1px solid #334155; padding: 0.8rem; border-radius: 6px; color: white; font-size: 1.2rem; }
+        .info-panel { margin-top: auto; padding: 1.2rem; background: #0f172a; border-radius: 8px; font-size: 1.1rem; line-height: 1.6; }
+        .legend { position: absolute; bottom: 2rem; right: 2rem; background: rgba(30, 41, 59, 0.8); padding: 1.2rem; border-radius: 8px; backdrop-filter: blur(4px); font-size: 1.1rem; display: flex; flex-direction: column; gap: 0.75rem; }
         .legend-item { display: flex; align-items: center; gap: 0.75rem; }
         .dot { width: 14px; height: 14px; border-radius: 50%; }
-
-        /* Range Analysis Specific */
-        #analysis-progress {
-            margin-top: 1rem;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--primary);
-        }
+        #analysis-progress { margin-top: 1rem; font-size: 1.2rem; font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
 
-    <nav>
+    <nav id="main-nav">
         <button id="nav-vis" class="active">시각화</button>
         <button id="nav-analysis">범위 분석</button>
     </nav>
@@ -163,262 +122,211 @@
         <div id="view-vis" class="view active">
             <aside class="sidebar">
                 <h1>상태 전이 그래프</h1>
-                <p style="font-size: 1.1rem; color: #94a3b8; margin: 0;">
-                    1. 자리수 합 b 계산 -> N을 b진법 변환 -> 재해석
-                </p>
-                <div class="control-group">
-                    <label for="startN">시작 정수 N</label>
-                    <input type="text" id="startN" value="123456789">
-                </div>
-                <div class="control-group">
-                    <label for="maxIter">최대 반복 횟수</label>
-                    <input type="number" id="maxIter" value="30" min="1" max="100">
-                </div>
+                <p style="font-size: 1.1rem; color: #94a3b8; margin: 0;">1. 자리수 합 b 계산 -> N을 b진법 변환 -> 재해석</p>
+                <div class="control-group"><label for="startN">시작 정수 N</label><input type="text" id="startN" value="123456789"></div>
+                <div class="control-group"><label for="maxIter">최대 반복 횟수</label><input type="number" id="maxIter" value="30" min="1" max="100"></div>
                 <button id="runBtn" class="action-btn">시뮬레이션 시작</button>
-                <div id="info-panel" class="info-panel" style="display:none">
-                    <h3 style="margin-top: 0; font-size: 1.25rem;">노드 상세 정보</h3>
-                    <div id="node-details"></div>
-                </div>
+                <div id="info-panel" class="info-panel" style="display:none"><h3 style="margin: 0; font-size: 1.25rem;">노드 상세 정보</h3><div id="node-details"></div></div>
             </aside>
-            <main class="main-content">
-                <canvas id="graphCanvas"></canvas>
-                <div class="legend">
-                    <div class="legend-item"><div class="dot" style="background: var(--primary);"></div> 일반 노드</div>
-                    <div class="legend-item"><div class="dot" style="background: var(--cycle);"></div> 사이클</div>
-                    <div class="legend-item"><div class="dot" style="background: var(--fixed);"></div> 고정점</div>
-                </div>
-            </main>
+            <main class="main-content"><canvas id="graphCanvas"></canvas><div class="legend"><div class="legend-item"><div class="dot" style="background: var(--primary);"></div> 일반 노드</div><div class="legend-item"><div class="dot" style="background: var(--cycle);"></div> 사이클</div><div class="legend-item"><div class="dot" style="background: var(--fixed);"></div> 고정점</div></div></main>
         </div>
 
         <!-- 화면 2: 범위 분석 -->
         <div id="view-analysis" class="view">
             <aside class="sidebar">
                 <h1>범위 분석</h1>
-                <p style="font-size: 1.1rem; color: #94a3b8; margin: 0;">
-                    특정 범위의 모든 정수에 대해 최종 상태(고정점, 사이클, 발산)를 분류합니다.
-                </p>
-                <div class="control-group">
-                    <label for="minStart">최소 시작값</label>
-                    <input type="text" id="minStart" value="1">
-                </div>
-                <div class="control-group">
-                    <label for="maxStart">최대 시작값</label>
-                    <input type="text" id="maxStart" value="1000">
-                </div>
-                <div class="control-group">
-                    <label for="rangeIter">최대 반복 횟수</label>
-                    <input type="number" id="rangeIter" value="50" min="1" max="500">
-                </div>
+                <p style="font-size: 1.1rem; color: #94a3b8; margin: 0;">각 막대를 클릭하면 상세 목록을 볼 수 있습니다.</p>
+                <div class="control-group"><label for="minStart">최소 시작값</label><input type="text" id="minStart" value="1"></div>
+                <div class="control-group"><label for="maxStart">최대 시작값</label><input type="text" id="maxStart" value="1000"></div>
+                <div class="control-group"><label for="rangeIter">최대 반복 횟수</label><input type="number" id="rangeIter" value="50" min="1" max="500"></div>
                 <button id="analysisBtn" class="action-btn">분석 실행</button>
                 <div id="analysis-progress">대기 중...</div>
-                <div class="info-panel" style="margin-top: 1rem;">
-                    <b>A. Fixed Point:</b> N=f(N) 도달<br>
-                    <b>B. Cycle:</b> 이전 값 재등장<br>
-                    <b>C. Divergent:</b> 10,000자 초과 또는 반복 제한
-                </div>
+                <div class="info-panel"><b>A. Fixed Point:</b> N=f(N) 도달<br><b>B. Cycle:</b> 이전 값 재등장<br><b>C. Divergent:</b> 10,000자 초과/제한</div>
             </aside>
-            <main class="main-content">
-                <canvas id="analysisCanvas"></canvas>
-            </main>
+            <main class="main-content"><canvas id="analysisCanvas"></canvas></main>
+        </div>
+
+        <!-- 화면 3: 상세 결과 -->
+        <div id="view-details" class="view">
+            <div class="detail-header">
+                <button class="back-btn" id="backToAnalysis">← 뒤로가기</button>
+                <h1 id="detailTitle">상세 결과</h1>
+            </div>
+            <div id="detailsGrid" class="result-grid"></div>
         </div>
     </div>
 
 <script>
-    /**
-     * 공통 시스템 연산 로직
-     */
-    function getDigitSum(n) {
-        return n.toString().split('').reduce((acc, char) => acc + BigInt(char), 0n);
-    }
-
+    /** 공통 시스템 연산 **/
+    function getDigitSum(n) { return n.toString().split('').reduce((acc, char) => acc + BigInt(char), 0n); }
     function toBaseBString(n, b) {
         if (b <= 1n) return n.toString();
-        if (n === 0n) return "0";
-        let digits = [];
-        let tempN = n;
-        while (tempN > 0n) {
-            digits.push(tempN % b);
-            tempN = tempN / b;
-        }
-        return digits.reverse().join('');
+        let digits = []; let tempN = n;
+        while (tempN > 0n) { digits.push(tempN % b); tempN = tempN / b; }
+        return digits.reverse().join('') || "0";
     }
+    function getNextState(n) { const b = getDigitSum(n); return { value: n, b, next: BigInt(toBaseBString(n, b)) }; }
 
-    function getNextState(n) {
-        const b = getDigitSum(n);
-        const bString = toBaseBString(n, b);
-        const nextN = BigInt(bString);
-        return { value: n, b, bString, next: nextN };
+    /** SPA 화면 전환 **/
+    const views = { vis: document.getElementById('view-vis'), analysis: document.getElementById('view-analysis'), details: document.getElementById('view-details') };
+    const navButtons = { vis: document.getElementById('nav-vis'), analysis: document.getElementById('nav-analysis') };
+
+    function switchView(target) {
+        Object.values(views).forEach(v => v.classList.remove('active'));
+        views[target].classList.add('active');
+        if (target === 'vis') { navButtons.vis.classList.add('active'); navButtons.analysis.classList.remove('active'); startVisAnimation(); }
+        else if (target === 'analysis') { navButtons.vis.classList.remove('active'); navButtons.analysis.classList.add('active'); stopVisAnimation(); }
+        else { stopVisAnimation(); }
     }
+    navButtons.vis.addEventListener('click', () => switchView('vis'));
+    navButtons.analysis.addEventListener('click', () => switchView('analysis'));
+    document.getElementById('backToAnalysis').addEventListener('click', () => switchView('analysis'));
 
-    /**
-     * SPA 화면 전환 로직
-     */
-    const navVis = document.getElementById('nav-vis');
-    const navAnalysis = document.getElementById('nav-analysis');
-    const viewVis = document.getElementById('view-vis');
-    const viewAnalysis = document.getElementById('view-analysis');
-
-    function switchView(viewName) {
-        if (viewName === 'vis') {
-            navVis.classList.add('active');
-            navAnalysis.classList.remove('active');
-            viewVis.classList.add('active');
-            viewAnalysis.classList.remove('active');
-            startVisAnimation();
-        } else {
-            navVis.classList.remove('active');
-            navAnalysis.classList.add('active');
-            viewVis.classList.remove('active');
-            viewAnalysis.classList.add('active');
-            stopVisAnimation();
-        }
-    }
-
-    navVis.addEventListener('click', () => switchView('vis'));
-    navAnalysis.addEventListener('click', () => switchView('analysis'));
-
-    /**
-     * [화면 1] 시각화 로직
-     */
-    const graphCanvas = document.getElementById('graphCanvas');
-    const gCtx = graphCanvas.getContext('2d');
-    const NODE_RADIUS = 35;
-    let nodes = [];
-    let edges = [];
-    let selectedNode = null;
-    let draggedNode = null;
-    let animationId = null;
-    let simulationAlpha = 1.0;
+    /** [화면 1] 시각화 (기존 로직 유지) **/
+    const gCanvas = document.getElementById('graphCanvas'); const gCtx = gCanvas.getContext('2d');
+    const NODE_RADIUS = 35; let nodes = [], edges = [], selectedNode = null, draggedNode = null, animationId = null, simulationAlpha = 1.0;
 
     function generateGraphData() {
-        nodes = [];
-        edges = [];
-        simulationAlpha = 1.0;
-        const startN = BigInt(document.getElementById('startN').value.trim() || "0");
-        const maxIter = parseInt(document.getElementById('maxIter').value);
-        let currentN = startN;
-        const visitedMap = new Map();
-        const sequence = [];
-
+        nodes = []; edges = []; simulationAlpha = 1.0;
+        const startN = BigInt(document.getElementById('startN').value.trim() || "0"), maxIter = parseInt(document.getElementById('maxIter').value);
+        let currentN = startN; const visitedMap = new Map(), sequence = [];
         for (let i = 0; i < maxIter; i++) {
-            if (visitedMap.has(currentN)) {
-                markCycle(sequence, visitedMap.get(currentN));
-                break;
-            }
-            const state = getNextState(currentN);
-            visitedMap.set(currentN, i);
-            sequence.push(state);
-            const node = {
-                id: currentN.toString(), value: currentN, b: state.b, bString: state.bString,
-                nextValue: state.next, x: graphCanvas.width / 2 + (Math.random() - 0.5) * 100,
-                y: graphCanvas.height / 2 + (Math.random() - 0.5) * 100, vx: 0, vy: 0, type: 'normal'
-            };
+            if (visitedMap.has(currentN)) { markCycle(sequence, visitedMap.get(currentN)); break; }
+            const state = getNextState(currentN); visitedMap.set(currentN, i); sequence.push(state);
+            const node = { id: currentN.toString(), value: currentN, x: gCanvas.width/2+(Math.random()-0.5)*100, y: gCanvas.height/2+(Math.random()-0.5)*100, vx:0, vy:0, type:'normal', nextValue: state.next, b: state.b };
             if (state.value === state.next) node.type = 'fixed';
-            nodes.push(node);
-            edges.push({ source: currentN.toString(), target: state.next.toString() });
-            if (node.type === 'fixed') break;
-            currentN = state.next;
+            nodes.push(node); edges.push({ source: currentN.toString(), target: state.next.toString() });
+            if (node.type === 'fixed') break; currentN = state.next;
         }
     }
-
-    function markCycle(sequence, startIndex) {
-        for (let i = startIndex; i < sequence.length; i++) {
-            const node = nodes.find(n => n.id === sequence[i].value.toString());
-            if (node && node.type !== 'fixed') node.type = 'cycle';
-        }
-    }
-
+    function markCycle(seq, start) { for (let i = start; i < seq.length; i++) { const n = nodes.find(x => x.id === seq[i].value.toString()); if (n && n.type !== 'fixed') n.type = 'cycle'; } }
     function updatePhysics() {
-        if (simulationAlpha < 0.005) return false; // 시뮬레이션 온도 낮으면 물리 중단
-        const repulsion = 5000 * simulationAlpha;
-        const springLength = 160;
-        const springStrength = 0.08 * simulationAlpha;
-        const friction = 0.85;
-
-        for (let i = 0; i < nodes.length; i++) {
-            for (let j = i + 1; j < nodes.length; j++) {
-                const n1 = nodes[i], n2 = nodes[j];
-                const dx = n2.x - n1.x, dy = n2.y - n1.y, d2 = dx*dx + dy*dy + 0.1, d = Math.sqrt(d2);
-                const f = repulsion / d2;
-                n1.vx -= (dx/d)*f; n1.vy -= (dy/d)*f; n2.vx += (dx/d)*f; n2.vy += (dy/d)*f;
-            }
-        }
+        if (simulationAlpha < 0.005) return false;
+        nodes.forEach((n1, i) => nodes.slice(i+1).forEach(n2 => {
+            const dx = n2.x-n1.x, dy = n2.y-n1.y, d2 = dx*dx+dy*dy+0.1, d = Math.sqrt(d2), f = (5000*simulationAlpha)/d2;
+            n1.vx -= (dx/d)*f; n1.vy -= (dy/d)*f; n2.vx += (dx/d)*f; n2.vy += (dy/d)*f;
+        }));
         edges.forEach(e => {
             const s = nodes.find(n => n.id === e.source), t = nodes.find(n => n.id === e.target);
             if (!s || !t || s === t) return;
-            const dx = t.x - s.x, dy = t.y - s.y, d = Math.sqrt(dx*dx + dy*dy) || 0.1;
-            const f = (d - springLength) * springStrength;
+            const dx = t.x-s.x, dy = t.y-s.y, d = Math.sqrt(dx*dx+dy*dy)||0.1, f = (d-160)*(0.08*simulationAlpha);
             s.vx += (dx/d)*f; s.vy += (dy/d)*f; t.vx -= (dx/d)*f; t.vy -= (dy/d)*f;
         });
-        nodes.forEach(n => {
-            if (n === draggedNode) return;
-            n.vx += (graphCanvas.width/2 - n.x) * 0.005 * simulationAlpha;
-            n.vy += (graphCanvas.height/2 - n.y) * 0.005 * simulationAlpha;
-            n.vx *= friction; n.vy *= friction;
-            n.x += n.vx; n.y += n.vy;
-        });
-        simulationAlpha *= 0.99;
-        return true;
+        nodes.forEach(n => { if (n !== draggedNode) { n.vx += (gCanvas.width/2-n.x)*0.005*simulationAlpha; n.vy += (gCanvas.height/2-n.y)*0.005*simulationAlpha; n.vx *= 0.85; n.vy *= 0.85; n.x += n.vx; n.y += n.vy; } });
+        simulationAlpha *= 0.99; return true;
     }
-
     function drawVis() {
-        gCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
-        const isMoving = updatePhysics();
+        gCtx.clearRect(0,0,gCanvas.width,gCanvas.height); const moving = updatePhysics();
         edges.forEach(e => {
-            const s = nodes.find(n => n.id === e.source), t = nodes.find(n => n.id === e.target);
-            if (!s || !t || s === t) return;
-            const angle = Math.atan2(t.y - s.y, t.x - s.x);
-            const tx = t.x - NODE_RADIUS * Math.cos(angle), ty = t.y - NODE_RADIUS * Math.sin(angle);
-            const sx = s.x + NODE_RADIUS * Math.cos(angle), sy = s.y + NODE_RADIUS * Math.sin(angle);
-            gCtx.beginPath(); gCtx.moveTo(sx, sy); gCtx.lineTo(tx, ty);
-            gCtx.strokeStyle = 'rgba(100, 116, 139, 0.5)'; gCtx.lineWidth = 3; gCtx.stroke();
-            gCtx.beginPath(); gCtx.moveTo(tx, ty);
-            gCtx.lineTo(tx - 15 * Math.cos(angle - Math.PI/6), ty - 15 * Math.sin(angle - Math.PI/6));
-            gCtx.lineTo(tx - 15 * Math.cos(angle + Math.PI/6), ty - 15 * Math.sin(angle + Math.PI/6));
-            gCtx.closePath(); gCtx.fillStyle = 'rgba(100, 116, 139, 0.8)'; gCtx.fill();
+            const s = nodes.find(n => n.id === e.source), t = nodes.find(n => n.id === e.target); if (!s || !t || s === t) return;
+            const angle = Math.atan2(t.y-s.y, t.x-s.x), tx = t.x-NODE_RADIUS*Math.cos(angle), ty = t.y-NODE_RADIUS*Math.sin(angle), sx = s.x+NODE_RADIUS*Math.cos(angle), sy = s.y+NODE_RADIUS*Math.sin(angle);
+            gCtx.beginPath(); gCtx.moveTo(sx,sy); gCtx.lineTo(tx,ty); gCtx.strokeStyle = 'rgba(100,116,139,0.5)'; gCtx.lineWidth = 3; gCtx.stroke();
+            gCtx.beginPath(); gCtx.moveTo(tx,ty); gCtx.lineTo(tx-15*Math.cos(angle-Math.PI/6), ty-15*Math.sin(angle-Math.PI/6)); gCtx.lineTo(tx-15*Math.cos(angle+Math.PI/6), ty-15*Math.sin(angle+Math.PI/6)); gCtx.closePath(); gCtx.fillStyle = 'rgba(100,116,139,0.8)'; gCtx.fill();
         });
-
-        const time = Date.now() / 1000;
+        const time = Date.now()/1000;
         nodes.forEach(n => {
-            gCtx.save();
-            let color = '#3b82f6'; if (n.type === 'fixed') color = '#10b981'; else if (n.type === 'cycle') color = '#f59e0b';
-            gCtx.shadowBlur = 15 + Math.sin(time*3)*5; gCtx.shadowColor = color;
-            let scale = 1.0;
-            // 시뮬레이션 중이거나 드래그 중일 때만 애니메이션 효과
-            if (isMoving || draggedNode || n === selectedNode) scale = 1.0 + Math.sin(time*4)*0.03;
+            gCtx.save(); let color = '#3b82f6'; if (n.type === 'fixed') color = '#10b981'; else if (n.type === 'cycle') color = '#f59e0b';
+            gCtx.shadowBlur = 15+Math.sin(time*3)*5; gCtx.shadowColor = color;
+            let scale = (moving || draggedNode || n === selectedNode) ? 1.0 + Math.sin(time*4)*0.03 : 1.0;
             gCtx.beginPath(); gCtx.arc(n.x, n.y, NODE_RADIUS*scale, 0, Math.PI*2);
             if (selectedNode === n) { gCtx.strokeStyle = 'white'; gCtx.lineWidth = 4; gCtx.stroke(); }
-            gCtx.fillStyle = color; gCtx.fill();
-            gCtx.shadowBlur = 0; gCtx.fillStyle = 'white'; gCtx.font = 'bold 14px monospace'; gCtx.textAlign = 'center';
-            const dv = n.id.length > 7 ? n.id.substring(0,6) + '..' : n.id;
-            gCtx.fillText(dv, n.x, n.y + 5); gCtx.restore();
+            gCtx.fillStyle = color; gCtx.fill(); gCtx.shadowBlur = 0; gCtx.fillStyle = 'white'; gCtx.font = 'bold 14px monospace'; gCtx.textAlign = 'center';
+            gCtx.fillText(n.id.length > 7 ? n.id.substring(0,6)+'..' : n.id, n.x, n.y+5); gCtx.restore();
         });
+        if (moving || draggedNode) animationId = requestAnimationFrame(drawVis); else animationId = null;
+    }
+    function startVisAnimation() { if (!animationId) drawVis(); }
+    function stopVisAnimation() { if (animationId) cancelAnimationFrame(animationId); animationId = null; }
 
-        // 물리 연산이 멈추고 드래그 중이 아니면 루프 중단 (전력 절약 및 고정)
-        if (isMoving || draggedNode) {
-            animationId = requestAnimationFrame(drawVis);
-        } else {
-            animationId = null;
+    /** [화면 2 & 3] 범위 분석 및 상세 리포트 **/
+    const aCanvas = document.getElementById('analysisCanvas'); const aCtx = aCanvas.getContext('2d');
+    const aProgress = document.getElementById('analysis-progress');
+    let fullResults = { fixed: [], cycle: [], divergent: [] };
+    let barRects = [];
+
+    function classifyDetailed(startN, maxIter) {
+        let current = startN; const history = []; const historySet = new Set();
+        for (let i = 0; i < maxIter; i++) {
+            const state = getNextState(current);
+            if (state.next === current) return { startValue: startN, type: 'fixed', fixedPoint: current };
+            if (historySet.has(state.next)) {
+                const cycleArr = history.slice(history.indexOf(state.next)).concat(state.next);
+                return { startValue: startN, type: 'cycle', cycleValues: cycleArr };
+            }
+            if (state.next.toString().length > 10000) return { startValue: startN, type: 'divergent', reason: '자릿수 10,000자 초과' };
+            history.push(current); historySet.add(current); current = state.next;
         }
+        return { startValue: startN, type: 'divergent', reason: '반복 횟수 제한 초과' };
     }
 
-    function startVisAnimation() {
-        if (!animationId) drawVis();
-    }
-    function stopVisAnimation() {
-        if (animationId) cancelAnimationFrame(animationId);
-        animationId = null;
+    async function runAnalysis() {
+        const min = BigInt(document.getElementById('minStart').value), max = BigInt(document.getElementById('maxStart').value), iter = parseInt(document.getElementById('rangeIter').value);
+        fullResults = { fixed: [], cycle: [], divergent: [] };
+        const total = Number(max - min + 1n); let processed = 0, current = min;
+        
+        async function process() {
+            for (let i = 0; i < 50 && current <= max; i++) {
+                const res = classifyDetailed(current, iter);
+                fullResults[res.type].push(res);
+                current++; processed++;
+            }
+            aProgress.textContent = `진행률: ${Math.round((processed/total)*100)}% (${processed}/${total})`;
+            drawBarChart();
+            if (current <= max) setTimeout(process, 0); else aProgress.textContent = `분석 완료 (총 ${total}개)`;
+        }
+        process();
     }
 
-    document.getElementById('runBtn').addEventListener('click', () => {
-        stopVisAnimation();
-        generateGraphData();
-        startVisAnimation();
+    function drawBarChart() {
+        const r = aCanvas.parentElement.getBoundingClientRect(); aCanvas.width = r.width; aCanvas.height = r.height;
+        aCtx.clearRect(0,0,aCanvas.width,aCanvas.height); barRects = [];
+        const cats = [ {key:'fixed', label:'Fixed Point', color:'#10b981'}, {key:'cycle', label:'Cycle', color:'#f59e0b'}, {key:'divergent', label:'Divergent', color:'#ef4444'} ];
+        const maxCount = Math.max(...cats.map(c => fullResults[c.key].length), 1);
+        cats.forEach((cat, i) => {
+            const count = fullResults[cat.key].length;
+            const h = (count/maxCount)*(aCanvas.height*0.6), w = aCanvas.width*0.15, x = (aCanvas.width/4)*(i+1)-w/2, y = aCanvas.height*0.8-h;
+            aCtx.fillStyle = cat.color; aCtx.fillRect(x, y, w, h);
+            aCtx.fillStyle = 'white'; aCtx.font = 'bold 1.2rem Pretendard'; aCtx.textAlign = 'center';
+            aCtx.fillText(count, x+w/2, y-15); aCtx.fillText(cat.label, x+w/2, aCanvas.height*0.8+35);
+            barRects.push({ x, y, w, h, key: cat.key, label: cat.label });
+        });
+    }
+
+    function showDetails(categoryKey) {
+        const data = fullResults[categoryKey];
+        const titleMap = { fixed: 'Fixed Point 목록', cycle: 'Cycle 목록', divergent: 'Divergent 목록' };
+        document.getElementById('detailTitle').textContent = titleMap[categoryKey];
+        const grid = document.getElementById('detailsGrid'); grid.innerHTML = '';
+        
+        data.forEach(item => {
+            const card = document.createElement('div'); card.className = `result-card ${item.type}`;
+            let extra = '';
+            if (item.type === 'fixed') extra = `<p>최종 고정점: <span class="val">${item.fixedPoint}</span></p>`;
+            else if (item.type === 'cycle') extra = `<p>주기 길이: ${item.cycleValues.length}</p><p>구성: <span class="val">${item.cycleValues.join(', ')}</span></p>`;
+            else extra = `<p>사유: <span style="color:var(--divergent)">${item.reason}</span></p>`;
+            
+            card.innerHTML = `<h4>시작값: ${item.startValue}</h4>${extra}`;
+            grid.appendChild(card);
+        });
+        switchView('details');
+    }
+
+    aCanvas.addEventListener('mousedown', (e) => {
+        const rect = aCanvas.getBoundingClientRect(), mx = e.clientX-rect.left, my = e.clientY-rect.top;
+        const hit = barRects.find(b => mx >= b.x && mx <= b.x+b.w && my >= b.y && my <= b.y+b.h);
+        if (hit) showDetails(hit.key);
     });
 
-    graphCanvas.addEventListener('mousedown', (e) => {
-        const rect = graphCanvas.getBoundingClientRect(), mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        const found = nodes.find(n => Math.sqrt((n.x-mx)**2 + (n.y-my)**2) < NODE_RADIUS);
+    /** 초기화 및 이벤트 바인딩 **/
+    document.getElementById('runBtn').addEventListener('click', () => { generateGraphData(); startVisAnimation(); });
+    document.getElementById('analysisBtn').addEventListener('click', runAnalysis);
+    window.addEventListener('resize', () => { drawBarChart(); const r = gCanvas.parentElement.getBoundingClientRect(); gCanvas.width=r.width; gCanvas.height=r.height; });
+    window.onload = () => { window.dispatchEvent(new Event('resize')); generateGraphData(); startVisAnimation(); };
+
+    // Canvas 히트 테스트 보정을 위한 클릭 핸들러 (시각화 화면)
+    gCanvas.addEventListener('mousedown', (e) => {
+        const rect = gCanvas.getBoundingClientRect(), mx = e.clientX-rect.left, my = e.clientY-rect.top;
+        const found = nodes.find(n => Math.sqrt((n.x-mx)**2+(n.y-my)**2) < NODE_RADIUS);
         if (found) {
             draggedNode = found; selectedNode = found; simulationAlpha = 0.5;
             document.getElementById('info-panel').style.display = 'block';
@@ -426,115 +334,6 @@
             startVisAnimation();
         } else { selectedNode = null; document.getElementById('info-panel').style.display = 'none'; }
     });
-    window.addEventListener('mousemove', (e) => { if (draggedNode) { const r = graphCanvas.getBoundingClientRect(); draggedNode.x = e.clientX-r.left; draggedNode.y = e.clientY-r.top; simulationAlpha = 0.2; } });
-    window.addEventListener('mouseup', () => draggedNode = null);
-
-    /**
-     * [화면 2] 범위 분석 로직
-     */
-    const analysisCanvas = document.getElementById('analysisCanvas');
-    const aCtx = analysisCanvas.getContext('2d');
-    const analysisProgress = document.getElementById('analysis-progress');
-    let analysisData = { fixed: 0, cycle: 0, divergent: 0 };
-
-    function classifyN(n, maxIter) {
-        let current = n;
-        const history = new Set();
-        for (let i = 0; i < maxIter; i++) {
-            const next = getNextState(current).next;
-            if (next === current) return 'fixed';
-            if (history.has(next)) return 'cycle';
-            if (next.toString().length > 10000) return 'divergent';
-            history.add(next);
-            current = next;
-        }
-        return 'divergent'; // 제한 횟수 초과
-    }
-
-    async function runRangeAnalysis() {
-        const min = BigInt(document.getElementById('minStart').value);
-        const max = BigInt(document.getElementById('maxStart').value);
-        const iter = parseInt(document.getElementById('rangeIter').value);
-        
-        analysisData = { fixed: 0, cycle: 0, divergent: 0 };
-        const total = Number(max - min + 1n);
-        let processed = 0;
-
-        const CHUNK_SIZE = 50; // 한 번에 처리할 양
-
-        async function processChunk(currentN) {
-            for (let i = 0; i < CHUNK_SIZE && currentN <= max; i++) {
-                const result = classifyN(currentN, iter);
-                analysisData[result]++;
-                currentN++;
-                processed++;
-            }
-
-            // UI 업데이트
-            analysisProgress.textContent = `진행률: ${Math.round((processed / total) * 100)}% (${processed}/${total})`;
-            drawAnalysisChart();
-
-            if (currentN <= max) {
-                // 다음 덩어리를 비동기로 실행하여 메인 스레드 확보
-                setTimeout(() => processChunk(currentN), 0);
-            } else {
-                analysisProgress.textContent = `분석 완료! (총 ${total}개)`;
-            }
-        }
-
-        processChunk(min);
-    }
-
-    function drawAnalysisChart() {
-        const rect = analysisCanvas.getBoundingClientRect();
-        analysisCanvas.width = rect.width;
-        analysisCanvas.height = rect.height;
-        aCtx.clearRect(0, 0, analysisCanvas.width, analysisCanvas.height);
-
-        const categories = [
-            { key: 'fixed', label: 'Fixed Point', color: '#10b981' },
-            { key: 'cycle', label: 'Cycle', color: '#f59e0b' },
-            { key: 'divergent', label: 'Divergent', color: '#ef4444' }
-        ];
-
-        const total = analysisData.fixed + analysisData.cycle + analysisData.divergent || 1;
-        const barWidth = analysisCanvas.width * 0.15;
-        const chartBottom = analysisCanvas.height * 0.8;
-        const maxVal = Math.max(...categories.map(c => analysisData[c.key]), 1);
-
-        categories.forEach((cat, i) => {
-            const val = analysisData[cat.key];
-            const barHeight = (val / maxVal) * (analysisCanvas.height * 0.6);
-            const x = (analysisCanvas.width / 4) * (i + 1) - barWidth / 2;
-            const y = chartBottom - barHeight;
-
-            // 막대 그리기
-            aCtx.fillStyle = cat.color;
-            aCtx.fillRect(x, y, barWidth, barHeight);
-
-            // 레이블 및 수치
-            aCtx.fillStyle = 'white';
-            aCtx.font = 'bold 1.2rem Pretendard';
-            aCtx.textAlign = 'center';
-            aCtx.fillText(val, x + barWidth/2, y - 15);
-            aCtx.fillText(cat.label, x + barWidth/2, chartBottom + 30);
-        });
-    }
-
-    document.getElementById('analysisBtn').addEventListener('click', runRangeAnalysis);
-
-    window.addEventListener('resize', () => {
-        const r = graphCanvas.parentElement.getBoundingClientRect();
-        graphCanvas.width = r.width; graphCanvas.height = r.height;
-        drawAnalysisChart();
-    });
-
-    window.onload = () => {
-        const r = graphCanvas.parentElement.getBoundingClientRect();
-        graphCanvas.width = r.width; graphCanvas.height = r.height;
-        generateGraphData();
-        startVisAnimation();
-    };
 </script>
 </body>
 </html>
