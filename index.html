@@ -282,13 +282,41 @@
         aCtx.clearRect(0,0,aCanvas.width,aCanvas.height); barRects = [];
         const cats = [ {key:'fixed', label:'Fixed Point', color:'#10b981'}, {key:'cycle', label:'Cycle', color:'#f59e0b'}, {key:'divergent', label:'Divergent', color:'#ef4444'} ];
         const maxCount = Math.max(...cats.map(c => fullResults[c.key].length), 1);
+        
         cats.forEach((cat, i) => {
             const count = fullResults[cat.key].length;
             const h = (count/maxCount)*(aCanvas.height*0.6), w = aCanvas.width*0.15, x = (aCanvas.width/4)*(i+1)-w/2, y = aCanvas.height*0.8-h;
+            
+            // 막대 그리기
             aCtx.fillStyle = cat.color; aCtx.fillRect(x, y, w, h);
+            
+            // 수치 표시 (막대 위)
             aCtx.fillStyle = 'white'; aCtx.font = 'bold 1.2rem Pretendard'; aCtx.textAlign = 'center';
-            aCtx.fillText(count, x+w/2, y-15); aCtx.fillText(cat.label, x+w/2, aCanvas.height*0.8+35);
-            barRects.push({ x, y, w, h, key: cat.key, label: cat.label });
+            aCtx.fillText(count, x+w/2, y-15); 
+            
+            // 텍스트 라벨 (클릭 타겟)
+            const labelY = aCanvas.height * 0.8 + 35;
+            aCtx.fillStyle = cat.color; // 글자색을 막대 색상과 통일하여 강조
+            aCtx.fillText(cat.label, x+w/2, labelY);
+            
+            // 클릭 감지 영역 설정 (텍스트 주변)
+            const textWidth = aCtx.measureText(cat.label).width;
+            barRects.push({ 
+                x: x + w/2 - textWidth/2 - 20, // 좌우 여백 추가
+                y: labelY - 25,                 // 텍스트 높이 보정
+                w: textWidth + 40,
+                h: 40, 
+                key: cat.key, 
+                label: cat.label 
+            });
+
+            // 클릭 가능함을 암시하는 밑줄 (선택 사항)
+            aCtx.beginPath();
+            aCtx.moveTo(x + w/2 - textWidth/2, labelY + 5);
+            aCtx.lineTo(x + w/2 + textWidth/2, labelY + 5);
+            aCtx.strokeStyle = cat.color;
+            aCtx.lineWidth = 2;
+            aCtx.stroke();
         });
     }
 
