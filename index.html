@@ -3,268 +3,404 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>진법 변환 반복 시뮬레이터 (BigInt)</title>
+    <title>진법 변환 상태 전이 그래프 시뮬레이션</title>
     <style>
         :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --text: #0f172a;
-            --border: #e2e8f0;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f1f5f9;
+            --primary: #3b82f6;
+            --fixed: #10b981;
+            --cycle: #f59e0b;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Pretendard', system-ui, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 350px;
+            background-color: var(--card);
             padding: 2rem;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            gap: 1.5rem;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.3);
+            z-index: 10;
         }
 
-        .container {
-            width: 100%;
-            max-width: 1000px;
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        h1 { font-size: 1.25rem; margin: 0; color: var(--primary); }
+
+        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-size: 0.875rem; color: #94a3b8; }
+        input {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 0.6rem;
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 2rem;
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: filter 0.2s;
+        }
+        button:hover { filter: brightness(1.2); }
+
+        #info-panel {
+            margin-top: auto;
+            padding: 1rem;
+            background: #0f172a;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            display: none;
         }
 
-        h1 { margin-bottom: 0.5rem; color: var(--primary); }
-        p { color: #64748b; font-size: 0.9rem; }
+        #info-panel b { color: var(--primary); }
 
-        .input-group {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            justify-content: center;
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            cursor: grab;
         }
 
-        .field {
+        #canvas-container:active { cursor: grabbing; }
+
+        canvas { width: 100%; height: 100%; display: block; }
+
+        .legend {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 1rem;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+            font-size: 0.8rem;
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
         }
-
-        label { font-weight: 600; font-size: 0.85rem; }
-
-        input {
-            padding: 0.6rem 1rem;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 1rem;
-            width: 250px;
-        }
-
-        button {
-            padding: 0.6rem 1.5rem;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            align-self: flex-end;
-            transition: opacity 0.2s;
-        }
-
-        button:hover { opacity: 0.9; }
-
-        .result-area {
-            margin-top: 2rem;
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        th, td {
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            max-width: 300px;
-            word-break: break-all;
-        }
-
-        th {
-            background-color: #f1f5f9;
-            color: #475569;
-            font-weight: 600;
-        }
-
-        tr:hover { background-color: #f8fafc; }
-
-        .warning {
-            padding: 1rem;
-            background-color: #fef2f2;
-            border-left: 4px solid #ef4444;
-            color: #991b1b;
-            margin-bottom: 1.5rem;
-            display: none;
-        }
-
-        .info-box {
-            background: #eff6ff;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            font-size: 0.85rem;
-            line-height: 1.5;
-        }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <h1>진법 변환 반복 시뮬레이터</h1>
-        <p>BigInt 기반 고정밀 수치 해석 도구</p>
-    </header>
+    <aside id="sidebar">
+        <h1>상태 전이 그래프</h1>
+        <p style="font-size: 0.8rem; color: #94a3b8; margin: 0;">
+            1. 자리수 합 b 계산<br>
+            2. N을 b진법으로 변환<br>
+            3. 결과를 10진수로 재해석
+        </p>
 
-    <div class="info-box">
-        <strong>동작 방식:</strong><br>
-        1. 입력값 N의 10진수 자리수 합을 구함 (Base <i>b</i>)<br>
-        2. N을 <i>b</i>-진법으로 변환 (나머지들을 문자열로 연결)<br>
-        3. 변환된 문자열을 다시 10진수로 해석하여 다음 N으로 설정
-    </div>
-
-    <div id="warningBox" class="warning"></div>
-
-    <div class="input-group">
-        <div class="field">
-            <label for="numInput">자연수 N</label>
-            <input type="text" id="numInput" value="123456789" placeholder="큰 숫자 입력 가능">
+        <div class="control-group">
+            <label for="startN">시작 정수 N</label>
+            <input type="text" id="startN" value="123456789">
         </div>
-        <div class="field">
-            <label for="iterInput">반복 횟수</label>
-            <input type="number" id="iterInput" value="10" min="1" max="100">
-        </div>
-        <button id="runBtn">시뮬레이션 실행</button>
-    </div>
 
-    <div class="result-area">
-        <table id="resultTable">
-            <thead>
-                <tr>
-                    <th>단계</th>
-                    <th>현재 N</th>
-                    <th>자리수 합 (b)</th>
-                    <th>b-진법 문자열</th>
-                    <th>다음 N</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- 결과가 여기에 동적으로 삽입됩니다 -->
-            </tbody>
-        </table>
-    </div>
-</div>
+        <div class="control-group">
+            <label for="maxIter">최대 반복 횟수</label>
+            <input type="number" id="maxIter" value="30" min="1" max="100">
+        </div>
+
+        <button id="runBtn">시뮬레이션 시작</button>
+
+        <div id="info-panel">
+            <h3 style="margin-top: 0; font-size: 1rem;">노드 상세 정보</h3>
+            <div id="node-details"></div>
+        </div>
+    </aside>
+
+    <main id="canvas-container">
+        <canvas id="graphCanvas"></canvas>
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background: var(--primary);"></div> 일반 노드</div>
+            <div class="legend-item"><div class="dot" style="background: var(--cycle);"></div> 사이클</div>
+            <div class="legend-item"><div class="dot" style="background: var(--fixed);"></div> 고정점</div>
+        </div>
+    </main>
 
 <script>
     /**
-     * 진법 변환 반복 로직 (BigInt 기반)
+     * 상태 전이 시스템 로직 및 시각화 엔진
      */
 
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
     const runBtn = document.getElementById('runBtn');
-    const warningBox = document.getElementById('warningBox');
-    const resultTableBody = document.querySelector('#resultTable tbody');
+    const infoPanel = document.getElementById('info-panel');
+    const nodeDetails = document.getElementById('node-details');
 
-    // 1. 자리수 합 계산 (BigInt)
-    function getSumOfDigits(n) {
-        let sum = 0n;
-        const s = n.toString();
-        for (let char of s) {
-            sum += BigInt(char);
-        }
-        return sum;
+    let nodes = [];
+    let edges = [];
+    let selectedNode = null;
+    let animationId = null;
+
+    // 1. 시스템 연산 로직
+    function getDigitSum(n) {
+        return n.toString().split('').reduce((acc, char) => acc + BigInt(char), 0n);
     }
 
-    // 2. N을 base b 진법 문자열로 변환
-    // 10 이상의 자리수는 알파벳 대신 숫자를 그대로 연결함 (parseInt(..., 10) 대응)
     function toBaseBString(n, b) {
-        if (b <= 1n) return null;
+        if (b <= 1n) return n.toString();
         if (n === 0n) return "0";
-        
         let digits = [];
         let tempN = n;
         while (tempN > 0n) {
             digits.push(tempN % b);
             tempN = tempN / b;
         }
-        // 역순으로 정렬하여 문자열 결합
         return digits.reverse().join('');
     }
 
-    // 3. 메인 시뮬레이션 실행
-    function runSimulation() {
-        // UI 초기화
-        resultTableBody.innerHTML = '';
-        warningBox.style.display = 'none';
+    function getNextState(n) {
+        const b = getDigitSum(n);
+        const bString = toBaseBString(n, b);
+        const nextN = BigInt(bString);
+        return { value: n, b, bString, next: nextN };
+    }
+
+    // 2. 그래프 데이터 생성
+    function generateGraphData() {
+        nodes = [];
+        edges = [];
+        const startN = BigInt(document.getElementById('startN').value.trim() || "0");
+        const maxIter = parseInt(document.getElementById('maxIter').value);
+
+        let currentN = startN;
+        const visitedMap = new Map();
+        const sequence = [];
+
+        for (let i = 0; i < maxIter; i++) {
+            if (visitedMap.has(currentN)) {
+                // 사이클 발견
+                const cycleStartIndex = visitedMap.get(currentN);
+                markCycle(sequence, cycleStartIndex);
+                break;
+            }
+
+            const state = getNextState(currentN);
+            visitedMap.set(currentN, i);
+            sequence.push(state);
+
+            // 노드 추가
+            const node = {
+                id: currentN.toString(),
+                value: currentN,
+                b: state.b,
+                bString: state.bString,
+                nextValue: state.next,
+                x: (Math.random() - 0.5) * 200 + canvas.width / 2,
+                y: (Math.random() - 0.5) * 200 + canvas.height / 2,
+                vx: 0,
+                vy: 0,
+                type: 'normal'
+            };
+
+            if (state.value === state.next) node.type = 'fixed';
+            nodes.push(node);
+
+            // 간선 추가 (다음 값도 노드 리스트에 있을 것임)
+            edges.push({ source: currentN.toString(), target: state.next.toString() });
+
+            if (node.type === 'fixed') break;
+            currentN = state.next;
+        }
+
+        // 마지막 노드가 사이클의 일부인 경우 중복 방지를 위해 처리
+        // (실제 렌더링 시 target이 없는 경우를 대비해 보정 필요)
+    }
+
+    function markCycle(sequence, startIndex) {
+        for (let i = startIndex; i < sequence.length; i++) {
+            const valStr = sequence[i].value.toString();
+            const node = nodes.find(n => n.id === valStr);
+            if (node && node.type !== 'fixed') node.type = 'cycle';
+        }
+    }
+
+    // 3. Force-Directed Layout Simulation
+    function updatePhysics() {
+        const repulsion = 1000;
+        const springLength = 80;
+        const springStrength = 0.05;
+        const friction = 0.9;
+
+        // 노드 간 반발력
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                const n1 = nodes[i];
+                const n2 = nodes[j];
+                const dx = n2.x - n1.x;
+                const dy = n2.y - n1.y;
+                const distSq = dx * dx + dy * dy + 0.1;
+                const force = repulsion / distSq;
+                const fx = (dx / Math.sqrt(distSq)) * force;
+                const fy = (dy / Math.sqrt(distSq)) * force;
+                n1.vx -= fx; n1.vy -= fy;
+                n2.vx += fx; n2.vy += fy;
+            }
+        }
+
+        // 간선 인력
+        edges.forEach(edge => {
+            const source = nodes.find(n => n.id === edge.source);
+            const target = nodes.find(n => n.id === edge.target);
+            if (!source || !target) return;
+
+            const dx = target.x - source.x;
+            const dy = target.y - source.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 0.1;
+            const force = (dist - springLength) * springStrength;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            source.vx += fx; source.vy += fy;
+            target.vx -= fx; target.vy -= fy;
+        });
+
+        // 중심 중력 및 마찰
+        nodes.forEach(n => {
+            const dx = canvas.width / 2 - n.x;
+            const dy = canvas.height / 2 - n.y;
+            n.vx += dx * 0.01;
+            n.vy += dy * 0.01;
+
+            n.vx *= friction;
+            n.vy *= friction;
+            n.x += n.vx;
+            n.y += n.vy;
+        });
+    }
+
+    // 4. Rendering
+    function drawArrow(x1, y1, x2, y2) {
+        const headlen = 10;
+        const angle = Math.atan2(y2 - y1, x2 - x1);
         
-        let nStr = document.getElementById('numInput').value.trim();
-        let iterations = parseInt(document.getElementById('iterInput').value);
+        // 원 테두리까지만 그리기 위해 보정
+        const nodeRadius = 20;
+        const targetX = x2 - nodeRadius * Math.cos(angle);
+        const targetY = y2 - nodeRadius * Math.sin(angle);
+        const sourceX = x1 + nodeRadius * Math.cos(angle);
+        const sourceY = y1 + nodeRadius * Math.sin(angle);
 
-        if (!/^\d+$/.test(nStr)) {
-            showError("유효한 자연수를 입력해주세요.");
-            return;
-        }
+        ctx.beginPath();
+        ctx.moveTo(sourceX, sourceY);
+        ctx.lineTo(targetX, targetY);
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
-        let currentN = BigInt(nStr);
+        ctx.beginPath();
+        ctx.moveTo(targetX, targetY);
+        ctx.lineTo(targetX - headlen * Math.cos(angle - Math.PI / 6), targetY - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(targetX - headlen * Math.cos(angle + Math.PI / 6), targetY - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fillStyle = '#475569';
+        ctx.fill();
+    }
 
-        for (let i = 1; i <= iterations; i++) {
-            const b = getSumOfDigits(currentN);
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        updatePhysics();
+
+        // 간선 그리기
+        edges.forEach(edge => {
+            const source = nodes.find(n => n.id === edge.source);
+            const target = nodes.find(n => n.id === edge.target);
+            if (source && target && source !== target) {
+                drawArrow(source.x, source.y, target.x, target.y);
+            }
+        });
+
+        // 노드 그리기
+        nodes.forEach(node => {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 20, 0, Math.PI * 2);
             
-            if (b <= 1n) {
-                showError(`단계 ${i}: 자리수 합이 ${b}입니다. 1 이하의 진법으로는 변환할 수 없어 중단합니다.`);
-                break;
+            let color = '#3b82f6'; // normal
+            if (node.type === 'fixed') color = '#10b981';
+            else if (node.type === 'cycle') color = '#f59e0b';
+            
+            if (selectedNode === node) {
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 3;
+                ctx.stroke();
             }
 
-            const baseBString = toBaseBString(currentN, b);
-            const nextN = BigInt(baseBString);
+            ctx.fillStyle = color;
+            ctx.fill();
 
-            // 행 추가
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${i}</td>
-                <td>${currentN.toString()}</td>
-                <td>${b.toString()}</td>
-                <td>${baseBString}</td>
-                <td>${nextN.toString()}</td>
+            // 값 레이블
+            ctx.fillStyle = 'white';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'center';
+            const displayVal = node.id.length > 5 ? node.id.substring(0, 4) + '..' : node.id;
+            ctx.fillText(displayVal, node.x, node.y + 4);
+        });
+
+        animationId = requestAnimationFrame(draw);
+    }
+
+    // 5. Interaction
+    function handleResize() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        selectedNode = nodes.find(n => {
+            const dist = Math.sqrt((n.x - mouseX)**2 + (n.y - mouseY)**2);
+            return dist < 20;
+        });
+
+        if (selectedNode) {
+            infoPanel.style.display = 'block';
+            nodeDetails.innerHTML = `
+                <b>현재값:</b> ${selectedNode.value.toString()}<br>
+                <b>자리수 합 (b):</b> ${selectedNode.b.toString()}<br>
+                <b>b진법 문자열:</b> ${selectedNode.bString}<br>
+                <b>다음값:</b> ${selectedNode.nextValue.toString()}<br>
+                <b>유형:</b> ${selectedNode.type.toUpperCase()}
             `;
-            resultTableBody.appendChild(row);
-
-            // 무한 루프 또는 과도한 성장 방지 (문자열 길이가 너무 길어지면 브라우저 성능 저하)
-            if (nextN.toString().length > 5000) {
-                showError("숫자가 너무 커져 시뮬레이션을 중단합니다 (5000자리 초과).");
-                break;
-            }
-
-            currentN = nextN;
+        } else {
+            infoPanel.style.display = 'none';
         }
-    }
-
-    function showError(msg) {
-        warningBox.textContent = msg;
-        warningBox.style.display = 'block';
-    }
-
-    runBtn.addEventListener('click', runSimulation);
-
-    // Enter 키 대응
-    document.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') runSimulation();
     });
-</script>
 
+    runBtn.addEventListener('click', () => {
+        if (animationId) cancelAnimationFrame(animationId);
+        generateGraphData();
+        draw();
+    });
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    // 초기 실행
+    generateGraphData();
+    draw();
+
+</script>
 </body>
 </html>
