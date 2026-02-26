@@ -271,7 +271,7 @@
     const aCanvas = document.getElementById('analysisCanvas'); const aCtx = aCanvas.getContext('2d');
     const aProgress = document.getElementById('analysis-progress');
     let fullResults = { fixed: [], cycle: [], divergent: [] };
-    let historyRecords = [];
+    let historyRecords = JSON.parse(localStorage.getItem('numeral_sim_history') || '[]');
     let barRects = [];
 
     function classifyDetailed(startN, maxIter) {
@@ -321,14 +321,18 @@
             return acc;
         }, {});
 
-        historyRecords.unshift({
+        const newRecord = {
             timestamp: new Date().toLocaleString(),
             range: `${min} ~ ${max}`,
             iter,
             counts: { fixed: fullResults.fixed.length, cycle: cycleCount, divergent: fullResults.divergent.length },
             avgCycleLen,
             divReasons
-        });
+        };
+
+        historyRecords.unshift(newRecord);
+        // localStorage에 저장 (BigInt가 없으므로 문자열 상태로 저장됨)
+        localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
     }
 
     function drawBarChart() {
