@@ -3,37 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>진법 변환 산점도 시뮬레이션</title>
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>진법 변환 반복 시뮬레이터 (BigInt)</title>
     <style>
         :root {
-            --bg-color: #f8fafc;
-            --primary-color: #2563eb;
-            --secondary-color: #64748b;
-            --accent-color: #ef4444;
-            --card-bg: #ffffff;
-            --text-color: #1e293b;
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --text: #0f172a;
+            --border: #e2e8f0;
         }
 
         body {
-            font-family: 'Pretendard', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
             margin: 0;
             padding: 2rem;
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            justify-content: center;
         }
 
         .container {
-            max-width: 900px;
             width: 100%;
-            background: var(--card-bg);
+            max-width: 1000px;
+            background: white;
             padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         header {
@@ -41,245 +36,235 @@
             margin-bottom: 2rem;
         }
 
-        .controls {
+        h1 { margin-bottom: 0.5rem; color: var(--primary); }
+        p { color: #64748b; font-size: 0.9rem; }
+
+        .input-group {
             display: flex;
             gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
             justify-content: center;
-            margin-bottom: 2rem;
         }
 
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label { font-weight: 600; font-size: 0.85rem; }
+
         input {
-            padding: 0.5rem 1rem;
-            border: 1px solid #cbd5e1;
-            border-radius: 0.5rem;
+            padding: 0.6rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
             font-size: 1rem;
-            width: 200px;
+            width: 250px;
         }
 
         button {
-            padding: 0.5rem 1.5rem;
-            background-color: var(--primary-color);
+            padding: 0.6rem 1.5rem;
+            background-color: var(--primary);
             color: white;
             border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
+            border-radius: 6px;
             font-weight: 600;
-            transition: background-color 0.2s;
+            cursor: pointer;
+            align-self: flex-end;
+            transition: opacity 0.2s;
         }
 
-        button:hover {
-            background-color: #1d4ed8;
-        }
+        button:hover { opacity: 0.9; }
 
-        .canvas-container {
-            position: relative;
-            height: 500px;
-            width: 100%;
-        }
-
-        .info {
+        .result-area {
             margin-top: 2rem;
-            padding: 1rem;
-            background: #f1f5f9;
-            border-radius: 0.5rem;
-            font-size: 0.9rem;
-            line-height: 1.6;
+            overflow-x: auto;
         }
 
-        .sequence-log {
-            margin-top: 1rem;
-            max-height: 150px;
-            overflow-y: auto;
-            font-family: monospace;
-            padding: 0.5rem;
-            background: #e2e8f0;
-            border-radius: 0.25rem;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            max-width: 300px;
+            word-break: break-all;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        tr:hover { background-color: #f8fafc; }
+
+        .warning {
+            padding: 1rem;
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+            color: #991b1b;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <header>
-            <h1>진법-자리수 합 산점도 시뮬레이션</h1>
-            <p>자연수 N을 입력하고 진법 $b_n$과 다음 단계 진법 $b_{n+1}$의 관계를 관찰하세요.</p>
-        </header>
+<div class="container">
+    <header>
+        <h1>진법 변환 반복 시뮬레이터</h1>
+        <p>BigInt 기반 고정밀 수치 해석 도구</p>
+    </header>
 
-        <div class="controls">
-            <input type="number" id="inputN" value="12345" min="1" placeholder="자연수 N 입력">
-            <button onclick="runSimulation()">시뮬레이션 실행</button>
-        </div>
-
-        <div class="canvas-container">
-            <canvas id="scatterChart"></canvas>
-        </div>
-
-        <div class="info" id="resultInfo">
-            결과가 여기에 표시됩니다.
-            <div id="sequenceLog" class="sequence-log"></div>
-        </div>
+    <div class="info-box">
+        <strong>동작 방식:</strong><br>
+        1. 입력값 N의 10진수 자리수 합을 구함 (Base <i>b</i>)<br>
+        2. N을 <i>b</i>-진법으로 변환 (나머지들을 문자열로 연결)<br>
+        3. 변환된 문자열을 다시 10진수로 해석하여 다음 N으로 설정
     </div>
 
-    <script>
-        /**
-         * 진법 변환 시뮬레이션 핵심 로직
-         */
+    <div id="warningBox" class="warning"></div>
 
-        let chart = null;
+    <div class="input-group">
+        <div class="field">
+            <label for="numInput">자연수 N</label>
+            <input type="text" id="numInput" value="123456789" placeholder="큰 숫자 입력 가능">
+        </div>
+        <div class="field">
+            <label for="iterInput">반복 횟수</label>
+            <input type="number" id="iterInput" value="10" min="1" max="100">
+        </div>
+        <button id="runBtn">시뮬레이션 실행</button>
+    </div>
 
-        // 1. 자리수 합 계산 함수
-        function getSumOfDigits(n, base) {
-            if (base <= 1) return 1;
-            let sum = 0;
-            let tempN = n;
-            while (tempN > 0) {
-                sum += tempN % base;
-                tempN = Math.floor(tempN / base);
-            }
-            return sum;
+    <div class="result-area">
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>단계</th>
+                    <th>현재 N</th>
+                    <th>자리수 합 (b)</th>
+                    <th>b-진법 문자열</th>
+                    <th>다음 N</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 결과가 여기에 동적으로 삽입됩니다 -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    /**
+     * 진법 변환 반복 로직 (BigInt 기반)
+     */
+
+    const runBtn = document.getElementById('runBtn');
+    const warningBox = document.getElementById('warningBox');
+    const resultTableBody = document.querySelector('#resultTable tbody');
+
+    // 1. 자리수 합 계산 (BigInt)
+    function getSumOfDigits(n) {
+        let sum = 0n;
+        const s = n.toString();
+        for (let char of s) {
+            sum += BigInt(char);
+        }
+        return sum;
+    }
+
+    // 2. N을 base b 진법 문자열로 변환
+    // 10 이상의 자리수는 알파벳 대신 숫자를 그대로 연결함 (parseInt(..., 10) 대응)
+    function toBaseBString(n, b) {
+        if (b <= 1n) return null;
+        if (n === 0n) return "0";
+        
+        let digits = [];
+        let tempN = n;
+        while (tempN > 0n) {
+            digits.push(tempN % b);
+            tempN = tempN / b;
+        }
+        // 역순으로 정렬하여 문자열 결합
+        return digits.reverse().join('');
+    }
+
+    // 3. 메인 시뮬레이션 실행
+    function runSimulation() {
+        // UI 초기화
+        resultTableBody.innerHTML = '';
+        warningBox.style.display = 'none';
+        
+        let nStr = document.getElementById('numInput').value.trim();
+        let iterations = parseInt(document.getElementById('iterInput').value);
+
+        if (!/^\d+$/.test(nStr)) {
+            showError("유효한 자연수를 입력해주세요.");
+            return;
         }
 
-        // 2. 시뮬레이션 실행 및 시각화 함수
-        function runSimulation() {
-            const N = parseInt(document.getElementById('inputN').value);
-            if (isNaN(N) || N < 1) {
-                alert("유효한 자연수를 입력해주세요.");
-                return;
+        let currentN = BigInt(nStr);
+
+        for (let i = 1; i <= iterations; i++) {
+            const b = getSumOfDigits(currentN);
+            
+            if (b <= 1n) {
+                showError(`단계 ${i}: 자리수 합이 ${b}입니다. 1 이하의 진법으로는 변환할 수 없어 중단합니다.`);
+                break;
             }
 
-            const maxSteps = 50;
-            const history = [];
-            const points = [];
-            const cyclePoints = [];
-            
-            let currentBase = 10; // 시작 진법: 10
-            let cycleStartIndex = -1;
+            const baseBString = toBaseBString(currentN, b);
+            const nextN = BigInt(baseBString);
 
-            // 시뮬레이션 루프
-            for (let i = 0; i < maxSteps; i++) {
-                const nextBase = getSumOfDigits(N, currentBase);
-                
-                // (b_n, b_{n+1}) 점 추가
-                const point = { x: currentBase, y: nextBase };
-                
-                // 중복(주기) 확인
-                const prevIndex = history.findIndex(h => h === currentBase);
-                if (prevIndex !== -1 && cycleStartIndex === -1) {
-                    cycleStartIndex = prevIndex;
-                }
-
-                points.push(point);
-                history.push(currentBase);
-
-                // 중단 조건
-                if (nextBase <= 1 || cycleStartIndex !== -1) {
-                    // 마지막 점 추가 (주기 확인용)
-                    if (cycleStartIndex !== -1) {
-                        // 주기가 발생한 경우, 이미 history에 있는 값으로 돌아온 것
-                    }
-                    break;
-                }
-
-                currentBase = nextBase;
-            }
-
-            // 주기 점 분류
-            const finalPoints = [];
-            const finalCyclePoints = [];
-            
-            // 주기가 발견된 경우 처리
-            if (cycleStartIndex !== -1) {
-                // 실제 주기에 해당하는 부분만 분리
-                for (let i = 0; i < points.length; i++) {
-                    if (i >= cycleStartIndex) {
-                        finalCyclePoints.push(points[i]);
-                    } else {
-                        finalPoints.push(points[i]);
-                    }
-                }
-            } else {
-                finalPoints.push(...points);
-            }
-
-            updateChart(finalPoints, finalCyclePoints);
-            updateUI(N, history, cycleStartIndex);
-        }
-
-        // 3. 차트 업데이트 함수
-        function updateChart(normalData, cycleData) {
-            const ctx = document.getElementById('scatterChart').getContext('2d');
-            
-            if (chart) {
-                chart.destroy();
-            }
-
-            chart = new Chart(ctx, {
-                type: 'scatter',
-                data: {
-                    datasets: [
-                        {
-                            label: '일반 경로',
-                            data: normalData,
-                            backgroundColor: '#2563eb',
-                            pointRadius: 6,
-                            showLine: true,
-                            borderColor: 'rgba(37, 99, 235, 0.2)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: '반복 주기',
-                            data: cycleData,
-                            backgroundColor: '#ef4444',
-                            pointRadius: 8,
-                            showLine: true,
-                            borderColor: 'rgba(239, 68, 68, 0.5)',
-                            borderWidth: 2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            title: { display: true, text: '현재 진법 (b_n)' },
-                            suggestedMin: 0
-                        },
-                        y: {
-                            title: { display: true, text: '다음 진법 (b_{n+1})' },
-                            suggestedMin: 0
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => `(b_n: ${ctx.raw.x}, b_{n+1}: ${ctx.raw.y})`
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // 4. UI 텍스트 업데이트 함수
-        function updateUI(N, history, cycleIdx) {
-            const info = document.getElementById('resultInfo');
-            const log = document.getElementById('sequenceLog');
-            
-            let status = cycleIdx !== -1 ? 
-                `<span style="color:red">반복 주기 감지 (인덱스 ${cycleIdx}부터)</span>` : 
-                "반복 없이 종료 또는 최대 단계 도달";
-            
-            info.innerHTML = `
-                <strong>입력값 N:</strong> ${N}<br>
-                <strong>상태:</strong> ${status}<br>
-                <strong>단계 수:</strong> ${history.length}<br>
-                <div class="sequence-log">수열: ${history.join(' → ')}</div>
+            // 행 추가
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${i}</td>
+                <td>${currentN.toString()}</td>
+                <td>${b.toString()}</td>
+                <td>${baseBString}</td>
+                <td>${nextN.toString()}</td>
             `;
-        }
+            resultTableBody.appendChild(row);
 
-        // 초기 실행
-        window.onload = runSimulation;
-    </script>
+            // 무한 루프 또는 과도한 성장 방지 (문자열 길이가 너무 길어지면 브라우저 성능 저하)
+            if (nextN.toString().length > 5000) {
+                showError("숫자가 너무 커져 시뮬레이션을 중단합니다 (5000자리 초과).");
+                break;
+            }
+
+            currentN = nextN;
+        }
+    }
+
+    function showError(msg) {
+        warningBox.textContent = msg;
+        warningBox.style.display = 'block';
+    }
+
+    runBtn.addEventListener('click', runSimulation);
+
+    // Enter 키 대응
+    document.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') runSimulation();
+    });
+</script>
+
 </body>
 </html>

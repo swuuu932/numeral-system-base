@@ -1,26 +1,34 @@
-# Numeral System Base Simulation (Point Plot) Blueprint
+# Iterative Numeral System Transformation Blueprint
 
 ## Project Overview
-This tool focuses on the iterative transformation of a single input $N$. The core logic involves using the sum of digits of $N$ in its current base as the new base for the next step. The goal is to visualize the trajectory of these bases using a scatter plot of $(b_n, b_{n+1})$.
+This tool performs a specific mathematical iteration on a 10-digit natural number $N$. The process involves calculating the sum of decimal digits of $N$ to determine a new base $b$, converting $N$ to base $b$, and then re-interpreting the resulting string as a decimal integer for the next iteration.
 
-## Features & Design
-- **Single Input $N$**: Users can input any natural number $N$.
-- **Iterative Process**: 
-    - Start with base 10 (or user-defined initial base).
-    - Calculate $b_{n+1} = \text{sum of digits of } N \text{ in base } b_n$.
-    - Maximum 50 steps.
-    - Termination: $b \le 1$ or cycle detection.
-- **Visualization (Chart.js)**:
-    - **Scatter Plot**: X-axis represents $b_n$, Y-axis represents $b_{n+1}$.
-    - **Color Coding**: Normal steps are blue; points within a detected cycle are highlighted in red.
-    - **Line Tracing**: Optional line connecting points to show the sequence.
-- **UI/UX**:
-    - Input field for $N$.
-    - "Simulate" button to trigger calculation.
-    - Results table/summary showing the sequence.
+## Core Logic (Iteration Steps)
+1.  **Input**: A decimal natural number $N$ (using `BigInt`).
+2.  **Step (1)**: Calculate the sum of the digits of $N$ in base 10. Let this be $b$.
+3.  **Step (2)**: Convert $N$ to base $b$. Each "digit" in base $b$ is treated as its decimal string representation and concatenated.
+    *   *Example*: If remainders are 3, 12, 1 in base $b$, the string becomes "1123" (assembled from 1, 12, 3).
+4.  **Step (3)**: Interpret the resulting string as a new decimal integer $N_{next}$.
+5.  **Step (4)**: Repeat for a user-defined number of steps.
+
+## Features & UI
+- **BigInt Support**: All calculations use `BigInt` to handle potentially massive numbers.
+- **Table Output**: Displays Step #, $N$, $b$, Base-$b$ String, and Next $N$ for each iteration.
+- **Controls**:
+    - Input for $N$.
+    - Input for the number of iterations.
+    - Run button to start the process.
+- **Error Handling**:
+    - Stop if $b \le 1$ (base 1 is not defined for standard conversion).
+    - Handle cases where $N$ grows beyond reasonable display limits.
+
+## Implementation Details
+- **Sum of Digits**: Convert `BigInt` to string, split, and sum.
+- **Base Conversion**: Manual division/modulo loop to get remainders, then string concatenation.
+- **Re-interpretation**: Use `BigInt(string)` to convert the base-$b$ string back to a decimal number.
+- **No External Libraries**: Pure HTML/CSS/Vanilla JS.
 
 ## Implementation Steps
-- [ ] Clean up existing `index.html` and implement the new single-input logic.
-- [ ] Integrate Chart.js via CDN.
-- [ ] Implement the $(b_n, b_{n+1})$ mapping and cycle detection.
-- [ ] Add input controls and responsive styling.
+- [ ] Update `index.html` with the new logic and UI.
+- [ ] Implement `toBaseString(n, b)` to handle arbitrary bases $b > 1$.
+- [ ] Add basic styling for readability.
