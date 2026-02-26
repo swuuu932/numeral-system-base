@@ -330,8 +330,29 @@
         const cycleCount = fullResults.cycle.length;
         const avgCycleLen = cycleCount > 0 ? (fullResults.cycle.reduce((acc, cur) => acc + cur.cycleValues.length, 0) / cycleCount).toFixed(2) : 0;
         const divReasons = fullResults.divergent.reduce((acc, cur) => { acc[cur.reason] = (acc[cur.reason] || 0) + 1; return acc; }, {});
-        const newRecord = { id: Date.now(), timestamp: new Date().toLocaleString(), min: min.toString(), max: max.toString(), range: `${min} ~ ${max}`, iter, counts: { fixed: fullResults.fixed.length, cycle: cycleCount, divergent: fullResults.divergent.length }, avgCycleLen, divReasons };
-        historyRecords.unshift(newRecord); localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
+        
+        // BigInt를 문자열로 변환하여 저장 (JSON.stringify 호환용)
+        const serializableResults = {
+            fixed: fullResults.fixed.map(r => ({...r, startValue: r.startValue.toString(), fixedPoint: r.fixedPoint.toString()})),
+            cycle: fullResults.cycle.map(r => ({...r, startValue: r.startValue.toString(), cycleValues: r.cycleValues.map(v => v.toString())})),
+            divergent: fullResults.divergent.map(r => ({...r, startValue: r.startValue.toString()}))
+        };
+
+        const newRecord = { 
+            id: Date.now(), 
+            timestamp: new Date().toLocaleString(), 
+            min: min.toString(), 
+            max: max.toString(), 
+            range: `${min} ~ ${max}`, 
+            iter, 
+            counts: { fixed: fullResults.fixed.length, cycle: cycleCount, divergent: fullResults.divergent.length }, 
+            avgCycleLen, 
+            divReasons,
+            data: serializableResults // 전체 데이터 보관
+        };
+
+        historyRecords.unshift(newRecord); 
+        localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
     }
 
     function deleteRecord(id) {
@@ -341,12 +362,23 @@
 
     function viewRecord(id) {
         const rec = historyRecords.find(r => r.id === id);
-        if (!rec) return;
-        document.getElementById('minStart').value = rec.min || rec.range.split(' ~ ')[0];
-        document.getElementById('maxStart').value = rec.max || rec.range.split(' ~ ')[1];
+        if (!rec || !rec.data) return;
+
+        // 입력 UI 복원
+        document.getElementById('minStart').value = rec.min;
+        document.getElementById('maxStart').value = rec.max;
         document.getElementById('rangeIter').value = rec.iter;
+
+        // 결과 데이터 즉시 복원 (문자열 상태 그대로 표시용으로 사용하거나 필요시 BigInt로 다시 변환)
+        fullResults = rec.data;
+        
+        aProgress.textContent = `기록 불러오기 완료: ${rec.range} (재계산 없음)`;
         switchView('analysis');
-        runAnalysis();
+        
+        // 차트 즉시 렌더링
+        setTimeout(() => {
+            drawBarChart();
+        }, 100);
     }
 
     function drawBarChart() {
