@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>진법 변환 수학 시뮬레이터 (Pro)</title>
+    <title>진법 변환 수학 시뮬레이터 (Ultimate)</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -82,23 +82,30 @@
         .main-content { flex: 1; position: relative; }
         canvas { width: 100%; height: 100%; display: block; }
 
-        /* Detail View Styles */
-        #view-details { flex-direction: column; overflow-y: auto; padding: 2rem; background: var(--bg); display: none; }
-        #view-details.active { display: flex; }
-        
-        .detail-header { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
+        /* Shared List Styles (Details & History) */
+        .scroll-view { flex-direction: column; overflow-y: auto; padding: 2rem; background: var(--bg); width: 100%; }
+        .header-row { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
         .back-btn { background: #334155; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 6px; cursor: pointer; }
         
-        .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; padding-bottom: 4rem; }
-        .result-card { background: var(--card); padding: 1.5rem; border-radius: 12px; border-left: 6px solid #ccc; }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; padding-bottom: 4rem; }
+        .result-card { background: var(--card); padding: 1.5rem; border-radius: 12px; border-left: 6px solid #ccc; position: relative; }
+        
         .result-card.fixed { border-left-color: var(--fixed); }
         .result-card.cycle { border-left-color: var(--cycle); }
         .result-card.divergent { border-left-color: var(--divergent); }
-        .result-card h4 { margin: 0 0 0.5rem 0; color: var(--primary); word-break: break-all; }
-        .result-card p { margin: 0.25rem 0; font-size: 0.95rem; color: #cbd5e1; }
-        .result-card .val { font-family: monospace; color: white; background: #0f172a; padding: 2px 4px; border-radius: 4px; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+        
+        .result-card h4 { margin: 0 0 0.5rem 0; color: var(--primary); font-size: 1.2rem; }
+        .result-card p { margin: 0.4rem 0; font-size: 1rem; color: #cbd5e1; line-height: 1.4; }
+        .result-card .stat-label { font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+        .result-card .val { font-family: monospace; color: white; background: #0f172a; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
 
-        /* Original styles from previous steps */
+        /* History Specific */
+        .history-card { border-left: 6px solid var(--primary); }
+        .history-summary { display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #334155; }
+        .summary-item { text-align: center; }
+        .summary-item .num { display: block; font-size: 1.25rem; font-weight: bold; }
+
+        /* UI Elements */
         h1 { font-size: 1.75rem; margin: 0; color: var(--primary); }
         .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
         label { font-size: 1.1rem; color: #94a3b8; }
@@ -115,6 +122,7 @@
     <nav id="main-nav">
         <button id="nav-vis" class="active">시각화</button>
         <button id="nav-analysis">범위 분석</button>
+        <button id="nav-history">분석 기록</button>
     </nav>
 
     <div class="view-container">
@@ -135,7 +143,7 @@
         <div id="view-analysis" class="view">
             <aside class="sidebar">
                 <h1>범위 분석</h1>
-                <p style="font-size: 1.1rem; color: #94a3b8; margin: 0;">각 막대를 클릭하면 상세 목록을 볼 수 있습니다.</p>
+                <p style="font-size: 1.1rem; color: #94a3b8; margin: 0;">분석 결과의 하단 글자를 클릭하면 상세 목록을 볼 수 있습니다.</p>
                 <div class="control-group"><label for="minStart">최소 시작값</label><input type="text" id="minStart" value="1"></div>
                 <div class="control-group"><label for="maxStart">최대 시작값</label><input type="text" id="maxStart" value="1000"></div>
                 <div class="control-group"><label for="rangeIter">최대 반복 횟수</label><input type="number" id="rangeIter" value="50" min="1" max="500"></div>
@@ -147,12 +155,20 @@
         </div>
 
         <!-- 화면 3: 상세 결과 -->
-        <div id="view-details" class="view">
-            <div class="detail-header">
+        <div id="view-details" class="view scroll-view">
+            <div class="header-row">
                 <button class="back-btn" id="backToAnalysis">← 뒤로가기</button>
                 <h1 id="detailTitle">상세 결과</h1>
             </div>
             <div id="detailsGrid" class="result-grid"></div>
+        </div>
+
+        <!-- 화면 4: 분석 기록 -->
+        <div id="view-history" class="view scroll-view">
+            <div class="header-row">
+                <h1>과거 분석 기록</h1>
+            </div>
+            <div id="historyGrid" class="result-grid"></div>
         </div>
     </div>
 
@@ -168,21 +184,34 @@
     function getNextState(n) { const b = getDigitSum(n); return { value: n, b, next: BigInt(toBaseBString(n, b)) }; }
 
     /** SPA 화면 전환 **/
-    const views = { vis: document.getElementById('view-vis'), analysis: document.getElementById('view-analysis'), details: document.getElementById('view-details') };
-    const navButtons = { vis: document.getElementById('nav-vis'), analysis: document.getElementById('nav-analysis') };
+    const views = { 
+        vis: document.getElementById('view-vis'), 
+        analysis: document.getElementById('view-analysis'), 
+        details: document.getElementById('view-details'),
+        history: document.getElementById('view-history')
+    };
+    const navButtons = { 
+        vis: document.getElementById('nav-vis'), 
+        analysis: document.getElementById('nav-analysis'),
+        history: document.getElementById('nav-history')
+    };
 
     function switchView(target) {
         Object.values(views).forEach(v => v.classList.remove('active'));
+        Object.values(navButtons).forEach(b => b.classList.remove('active'));
         views[target].classList.add('active');
-        if (target === 'vis') { navButtons.vis.classList.add('active'); navButtons.analysis.classList.remove('active'); startVisAnimation(); }
-        else if (target === 'analysis') { navButtons.vis.classList.remove('active'); navButtons.analysis.classList.add('active'); stopVisAnimation(); }
-        else { stopVisAnimation(); }
+        if (navButtons[target]) navButtons[target].classList.add('active');
+        
+        if (target === 'vis') startVisAnimation();
+        else stopVisAnimation();
+
+        if (target === 'history') renderHistory();
     }
-    navButtons.vis.addEventListener('click', () => switchView('vis'));
-    navButtons.analysis.addEventListener('click', () => switchView('analysis'));
+    
+    Object.keys(navButtons).forEach(key => navButtons[key].addEventListener('click', () => switchView(key)));
     document.getElementById('backToAnalysis').addEventListener('click', () => switchView('analysis'));
 
-    /** [화면 1] 시각화 (기존 로직 유지) **/
+    /** [화면 1] 시각화 로직 (축약 버전) **/
     const gCanvas = document.getElementById('graphCanvas'); const gCtx = gCanvas.getContext('2d');
     const NODE_RADIUS = 35; let nodes = [], edges = [], selectedNode = null, draggedNode = null, animationId = null, simulationAlpha = 1.0;
 
@@ -220,8 +249,8 @@
         edges.forEach(e => {
             const s = nodes.find(n => n.id === e.source), t = nodes.find(n => n.id === e.target); if (!s || !t || s === t) return;
             const angle = Math.atan2(t.y-s.y, t.x-s.x), tx = t.x-NODE_RADIUS*Math.cos(angle), ty = t.y-NODE_RADIUS*Math.sin(angle), sx = s.x+NODE_RADIUS*Math.cos(angle), sy = s.y+NODE_RADIUS*Math.sin(angle);
-            gCtx.beginPath(); gCtx.moveTo(sx,sy); gCtx.lineTo(tx,ty); gCtx.strokeStyle = 'rgba(100,116,139,0.5)'; gCtx.lineWidth = 3; gCtx.stroke();
-            gCtx.beginPath(); gCtx.moveTo(tx,ty); gCtx.lineTo(tx-15*Math.cos(angle-Math.PI/6), ty-15*Math.sin(angle-Math.PI/6)); gCtx.lineTo(tx-15*Math.cos(angle+Math.PI/6), ty-15*Math.sin(angle+Math.PI/6)); gCtx.closePath(); gCtx.fillStyle = 'rgba(100,116,139,0.8)'; gCtx.fill();
+            gCtx.beginPath(); gCtx.moveTo(sx,sy); gCtx.lineTo(tx,ty); gCtx.strokeStyle = 'rgba(100, 116, 139, 0.5)'; gCtx.lineWidth = 3; gCtx.stroke();
+            gCtx.beginPath(); gCtx.moveTo(tx,ty); gCtx.lineTo(tx-15*Math.cos(angle-Math.PI/6), ty-15*Math.sin(angle-Math.PI/6)); gCtx.lineTo(tx-15*Math.cos(angle+Math.PI/6), ty-15*Math.sin(angle+Math.PI/6)); gCtx.closePath(); gCtx.fillStyle = 'rgba(100, 116, 139, 0.8)'; gCtx.fill();
         });
         const time = Date.now()/1000;
         nodes.forEach(n => {
@@ -238,10 +267,11 @@
     function startVisAnimation() { if (!animationId) drawVis(); }
     function stopVisAnimation() { if (animationId) cancelAnimationFrame(animationId); animationId = null; }
 
-    /** [화면 2 & 3] 범위 분석 및 상세 리포트 **/
+    /** [화면 2, 3, 4] 범위 분석 및 기록 **/
     const aCanvas = document.getElementById('analysisCanvas'); const aCtx = aCanvas.getContext('2d');
     const aProgress = document.getElementById('analysis-progress');
     let fullResults = { fixed: [], cycle: [], divergent: [] };
+    let historyRecords = [];
     let barRects = [];
 
     function classifyDetailed(startN, maxIter) {
@@ -272,9 +302,33 @@
             }
             aProgress.textContent = `진행률: ${Math.round((processed/total)*100)}% (${processed}/${total})`;
             drawBarChart();
-            if (current <= max) setTimeout(process, 0); else aProgress.textContent = `분석 완료 (총 ${total}개)`;
+            if (current <= max) {
+                setTimeout(process, 0);
+            } else {
+                aProgress.textContent = `분석 완료 (총 ${total}개)`;
+                saveToHistory(min, max, iter);
+            }
         }
         process();
+    }
+
+    function saveToHistory(min, max, iter) {
+        const cycleCount = fullResults.cycle.length;
+        const avgCycleLen = cycleCount > 0 ? (fullResults.cycle.reduce((acc, cur) => acc + cur.cycleValues.length, 0) / cycleCount).toFixed(2) : 0;
+        
+        const divReasons = fullResults.divergent.reduce((acc, cur) => {
+            acc[cur.reason] = (acc[cur.reason] || 0) + 1;
+            return acc;
+        }, {});
+
+        historyRecords.unshift({
+            timestamp: new Date().toLocaleString(),
+            range: `${min} ~ ${max}`,
+            iter,
+            counts: { fixed: fullResults.fixed.length, cycle: cycleCount, divergent: fullResults.divergent.length },
+            avgCycleLen,
+            divReasons
+        });
     }
 
     function drawBarChart() {
@@ -282,41 +336,43 @@
         aCtx.clearRect(0,0,aCanvas.width,aCanvas.height); barRects = [];
         const cats = [ {key:'fixed', label:'Fixed Point', color:'#10b981'}, {key:'cycle', label:'Cycle', color:'#f59e0b'}, {key:'divergent', label:'Divergent', color:'#ef4444'} ];
         const maxCount = Math.max(...cats.map(c => fullResults[c.key].length), 1);
-        
         cats.forEach((cat, i) => {
             const count = fullResults[cat.key].length;
             const h = (count/maxCount)*(aCanvas.height*0.6), w = aCanvas.width*0.15, x = (aCanvas.width/4)*(i+1)-w/2, y = aCanvas.height*0.8-h;
-            
-            // 막대 그리기
             aCtx.fillStyle = cat.color; aCtx.fillRect(x, y, w, h);
-            
-            // 수치 표시 (막대 위)
             aCtx.fillStyle = 'white'; aCtx.font = 'bold 1.2rem Pretendard'; aCtx.textAlign = 'center';
-            aCtx.fillText(count, x+w/2, y-15); 
-            
-            // 텍스트 라벨 (클릭 타겟)
+            aCtx.fillText(count, x+w/2, y-15);
             const labelY = aCanvas.height * 0.8 + 35;
-            aCtx.fillStyle = cat.color; // 글자색을 막대 색상과 통일하여 강조
-            aCtx.fillText(cat.label, x+w/2, labelY);
-            
-            // 클릭 감지 영역 설정 (텍스트 주변)
+            aCtx.fillStyle = cat.color; aCtx.fillText(cat.label, x+w/2, labelY);
             const textWidth = aCtx.measureText(cat.label).width;
-            barRects.push({ 
-                x: x + w/2 - textWidth/2 - 20, // 좌우 여백 추가
-                y: labelY - 25,                 // 텍스트 높이 보정
-                w: textWidth + 40,
-                h: 40, 
-                key: cat.key, 
-                label: cat.label 
-            });
+            barRects.push({ x: x + w/2 - textWidth/2 - 20, y: labelY - 25, w: textWidth + 40, h: 40, key: cat.key });
+            aCtx.beginPath(); aCtx.moveTo(x+w/2-textWidth/2, labelY+5); aCtx.lineTo(x+w/2+textWidth/2, labelY+5); aCtx.strokeStyle = cat.color; aCtx.lineWidth = 2; aCtx.stroke();
+        });
+    }
 
-            // 클릭 가능함을 암시하는 밑줄 (선택 사항)
-            aCtx.beginPath();
-            aCtx.moveTo(x + w/2 - textWidth/2, labelY + 5);
-            aCtx.lineTo(x + w/2 + textWidth/2, labelY + 5);
-            aCtx.strokeStyle = cat.color;
-            aCtx.lineWidth = 2;
-            aCtx.stroke();
+    function renderHistory() {
+        const grid = document.getElementById('historyGrid');
+        grid.innerHTML = historyRecords.length === 0 ? '<p style="grid-column: 1/-1; text-align: center; color: #94a3b8;">아직 기록된 분석이 없습니다.</p>' : '';
+        historyRecords.forEach(rec => {
+            const card = document.createElement('div');
+            card.className = 'result-card history-card';
+            let divReasonHtml = Object.entries(rec.divReasons).map(([r, c]) => `<li>${r}: ${c}건</li>`).join('');
+            card.innerHTML = `
+                <span class="stat-label">${rec.timestamp}</span>
+                <h4>범위: ${rec.range}</h4>
+                <p>최대 반복: ${rec.iter}회</p>
+                <div class="history-summary">
+                    <div class="summary-item"><span class="stat-label">Fixed</span><span class="num" style="color:var(--fixed)">${rec.counts.fixed}</span></div>
+                    <div class="summary-item"><span class="stat-label">Cycle</span><span class="num" style="color:var(--cycle)">${rec.counts.cycle}</span></div>
+                    <div class="summary-item"><span class="stat-label">Divergent</span><span class="num" style="color:var(--divergent)">${rec.counts.divergent}</span></div>
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.9rem;">
+                    <p><b>평균 주기 길이:</b> ${rec.avgCycleLen}</p>
+                    <p><b>발산 사유:</b></p>
+                    <ul style="margin: 0; padding-left: 1.2rem; color: #94a3b8;">${divReasonHtml || '없음'}</ul>
+                </div>
+            `;
+            grid.appendChild(card);
         });
     }
 
@@ -325,14 +381,11 @@
         const titleMap = { fixed: 'Fixed Point 목록', cycle: 'Cycle 목록', divergent: 'Divergent 목록' };
         document.getElementById('detailTitle').textContent = titleMap[categoryKey];
         const grid = document.getElementById('detailsGrid'); grid.innerHTML = '';
-        
         data.forEach(item => {
             const card = document.createElement('div'); card.className = `result-card ${item.type}`;
-            let extra = '';
-            if (item.type === 'fixed') extra = `<p>최종 고정점: <span class="val">${item.fixedPoint}</span></p>`;
-            else if (item.type === 'cycle') extra = `<p>주기 길이: ${item.cycleValues.length}</p><p>구성: <span class="val">${item.cycleValues.join(', ')}</span></p>`;
-            else extra = `<p>사유: <span style="color:var(--divergent)">${item.reason}</span></p>`;
-            
+            let extra = item.type === 'fixed' ? `<p>최종 고정점: <span class="val">${item.fixedPoint}</span></p>` :
+                        item.type === 'cycle' ? `<p>주기 길이: ${item.cycleValues.length}</p><p>구성: <span class="val">${item.cycleValues.join(', ')}</span></p>` :
+                        `<p>사유: <span style="color:var(--divergent)">${item.reason}</span></p>`;
             card.innerHTML = `<h4>시작값: ${item.startValue}</h4>${extra}`;
             grid.appendChild(card);
         });
@@ -345,13 +398,12 @@
         if (hit) showDetails(hit.key);
     });
 
-    /** 초기화 및 이벤트 바인딩 **/
+    /** 초기화 **/
     document.getElementById('runBtn').addEventListener('click', () => { generateGraphData(); startVisAnimation(); });
     document.getElementById('analysisBtn').addEventListener('click', runAnalysis);
     window.addEventListener('resize', () => { drawBarChart(); const r = gCanvas.parentElement.getBoundingClientRect(); gCanvas.width=r.width; gCanvas.height=r.height; });
     window.onload = () => { window.dispatchEvent(new Event('resize')); generateGraphData(); startVisAnimation(); };
 
-    // Canvas 히트 테스트 보정을 위한 클릭 핸들러 (시각화 화면)
     gCanvas.addEventListener('mousedown', (e) => {
         const rect = gCanvas.getBoundingClientRect(), mx = e.clientX-rect.left, my = e.clientY-rect.top;
         const found = nodes.find(n => Math.sqrt((n.x-mx)**2+(n.y-my)**2) < NODE_RADIUS);
@@ -362,6 +414,8 @@
             startVisAnimation();
         } else { selectedNode = null; document.getElementById('info-panel').style.display = 'none'; }
     });
+    window.addEventListener('mousemove', (e) => { if (draggedNode) { const r = gCanvas.getBoundingClientRect(); draggedNode.x = e.clientX-r.left; draggedNode.y = e.clientY-r.top; simulationAlpha = 0.2; } });
+    window.addEventListener('mouseup', () => draggedNode = null);
 </script>
 </body>
 </html>
