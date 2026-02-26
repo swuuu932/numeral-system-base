@@ -82,7 +82,7 @@
         .main-content { flex: 1; position: relative; }
         canvas { width: 100%; height: 100%; display: block; }
 
-        /* Shared List Styles (Details & History) */
+        /* Shared List Styles */
         .scroll-view { flex-direction: column; overflow-y: auto; padding: 2rem; background: var(--bg); width: 100%; }
         .header-row { display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem; }
         .back-btn { background: #334155; color: white; border: none; padding: 0.5rem 1.5rem; border-radius: 6px; cursor: pointer; }
@@ -118,10 +118,7 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .delete-btn:hover {
-            background: var(--divergent);
-            color: white;
-        }
+        .delete-btn:hover { background: var(--divergent); color: white; }
 
         /* UI Elements */
         h1 { font-size: 1.75rem; margin: 0; color: var(--primary); }
@@ -152,16 +149,26 @@
                 <div class="control-group"><label for="startN">시작 정수 N</label><input type="text" id="startN" value="123456789"></div>
                 <div class="control-group"><label for="maxIter">최대 반복 횟수</label><input type="number" id="maxIter" value="30" min="1" max="100"></div>
                 <button id="runBtn" class="action-btn">시뮬레이션 시작</button>
-                <div id="info-panel" class="info-panel" style="display:none"><h3 style="margin: 0; font-size: 1.25rem;">노드 상세 정보</h3><div id="node-details"></div></div>
+                <div id="info-panel" class="info-panel" style="display:none">
+                    <h3 style="margin: 0; font-size: 1.25rem;">노드 상세 정보</h3>
+                    <div id="node-details"></div>
+                </div>
             </aside>
-            <main class="main-content"><canvas id="graphCanvas"></canvas><div class="legend"><div class="legend-item"><div class="dot" style="background: var(--primary);"></div> 일반 노드</div><div class="legend-item"><div class="dot" style="background: var(--cycle);"></div> 사이클</div><div class="legend-item"><div class="dot" style="background: var(--fixed);"></div> 고정점</div></div></main>
+            <main class="main-content">
+                <canvas id="graphCanvas"></canvas>
+                <div class="legend">
+                    <div class="legend-item"><div class="dot" style="background: var(--primary);"></div> 일반 노드</div>
+                    <div class="legend-item"><div class="dot" style="background: var(--cycle);"></div> 사이클</div>
+                    <div class="legend-item"><div class="dot" style="background: var(--fixed);"></div> 고정점</div>
+                </div>
+            </main>
         </div>
 
         <!-- 화면 2: 범위 분석 -->
         <div id="view-analysis" class="view">
             <aside class="sidebar">
                 <h1>범위 분석</h1>
-                <p style="font-size: 1.1rem; color: #94a3b8; margin: 0;">분석 결과의 하단 글자를 클릭하면 상세 목록을 볼 수 있습니다.</p>
+                <p style="font-size: 1.1rem; color: #94a3b8; margin: 0;">분석 결과 하단의 글자를 클릭하여 상세 목록을 확인하세요.</p>
                 <div class="control-group"><label for="minStart">최소 시작값</label><input type="text" id="minStart" value="1"></div>
                 <div class="control-group"><label for="maxStart">최대 시작값</label><input type="text" id="maxStart" value="1000"></div>
                 <div class="control-group"><label for="rangeIter">최대 반복 횟수</label><input type="number" id="rangeIter" value="50" min="1" max="500"></div>
@@ -183,9 +190,7 @@
 
         <!-- 화면 4: 분석 기록 -->
         <div id="view-history" class="view scroll-view">
-            <div class="header-row">
-                <h1>과거 분석 기록</h1>
-            </div>
+            <div class="header-row"><h1>과거 분석 기록</h1></div>
             <div id="historyGrid" class="result-grid"></div>
         </div>
     </div>
@@ -202,39 +207,28 @@
     function getNextState(n) { const b = getDigitSum(n); return { value: n, b, next: BigInt(toBaseBString(n, b)) }; }
 
     /** SPA 화면 전환 **/
-    const views = { 
-        vis: document.getElementById('view-vis'), 
-        analysis: document.getElementById('view-analysis'), 
-        details: document.getElementById('view-details'),
-        history: document.getElementById('view-history')
-    };
-    const navButtons = { 
-        vis: document.getElementById('nav-vis'), 
-        analysis: document.getElementById('nav-analysis'),
-        history: document.getElementById('nav-history')
-    };
+    const views = { vis: document.getElementById('view-vis'), analysis: document.getElementById('view-analysis'), details: document.getElementById('view-details'), history: document.getElementById('view-history') };
+    const navButtons = { vis: document.getElementById('nav-vis'), analysis: document.getElementById('nav-analysis'), history: document.getElementById('nav-history') };
 
     function switchView(target) {
         Object.values(views).forEach(v => v.classList.remove('active'));
         Object.values(navButtons).forEach(b => b.classList.remove('active'));
         views[target].classList.add('active');
         if (navButtons[target]) navButtons[target].classList.add('active');
-        
-        if (target === 'vis') startVisAnimation();
-        else stopVisAnimation();
-
+        if (target === 'vis') startVisAnimation(); else stopVisAnimation();
         if (target === 'history') renderHistory();
     }
-    
     Object.keys(navButtons).forEach(key => navButtons[key].addEventListener('click', () => switchView(key)));
     document.getElementById('backToAnalysis').addEventListener('click', () => switchView('analysis'));
 
-    /** [화면 1] 시각화 로직 (축약 버전) **/
+    /** [화면 1] 시각화 로직 **/
     const gCanvas = document.getElementById('graphCanvas'); const gCtx = gCanvas.getContext('2d');
-    const NODE_RADIUS = 20; let nodes = [], edges = [], selectedNode = null, draggedNode = null, animationId = null, simulationAlpha = 1.0;
+    const NODE_RADIUS = 30; // 사용자가 만족한 적절한 크기
+    let nodes = [], edges = [], selectedNode = null, draggedNode = null, animationId = null, simulationAlpha = 1.0;
 
     function generateGraphData() {
-        nodes = []; edges = []; simulationAlpha = 1.0;
+        nodes = []; edges = []; simulationAlpha = 1.0; selectedNode = null;
+        document.getElementById('info-panel').style.display = 'none';
         const startN = BigInt(document.getElementById('startN').value.trim() || "0"), maxIter = parseInt(document.getElementById('maxIter').value);
         let currentN = startN; const visitedMap = new Map(), sequence = [];
         for (let i = 0; i < maxIter; i++) {
@@ -277,7 +271,7 @@
             let scale = (moving || draggedNode || n === selectedNode) ? 1.0 + Math.sin(time*4)*0.03 : 1.0;
             gCtx.beginPath(); gCtx.arc(n.x, n.y, NODE_RADIUS*scale, 0, Math.PI*2);
             if (selectedNode === n) { gCtx.strokeStyle = 'white'; gCtx.lineWidth = 4; gCtx.stroke(); }
-            gCtx.fillStyle = color; gCtx.fill(); gCtx.shadowBlur = 0; gCtx.fillStyle = 'white'; gCtx.font = 'bold 14px monospace'; gCtx.textAlign = 'center';
+            gCtx.fillStyle = color; gCtx.fill(); gCtx.shadowBlur = 0; gCtx.fillStyle = 'white'; gCtx.font = 'bold 12px monospace'; gCtx.textAlign = 'center';
             gCtx.fillText(n.id.length > 7 ? n.id.substring(0,6)+'..' : n.id, n.x, n.y+5); gCtx.restore();
         });
         if (moving || draggedNode) animationId = requestAnimationFrame(drawVis); else animationId = null;
@@ -308,10 +302,11 @@
     }
 
     async function runAnalysis() {
-        const min = BigInt(document.getElementById('minStart').value), max = BigInt(document.getElementById('maxStart').value), iter = parseInt(document.getElementById('rangeIter').value);
+        const minStr = document.getElementById('minStart').value, maxStr = document.getElementById('maxStart').value;
+        if (!minStr || !maxStr) return alert("시작값을 입력하세요.");
+        const min = BigInt(minStr), max = BigInt(maxStr), iter = parseInt(document.getElementById('rangeIter').value);
         fullResults = { fixed: [], cycle: [], divergent: [] };
         const total = Number(max - min + 1n); let processed = 0, current = min;
-        
         async function process() {
             for (let i = 0; i < 50 && current <= max; i++) {
                 const res = classifyDetailed(current, iter);
@@ -320,12 +315,7 @@
             }
             aProgress.textContent = `진행률: ${Math.round((processed/total)*100)}% (${processed}/${total})`;
             drawBarChart();
-            if (current <= max) {
-                setTimeout(process, 0);
-            } else {
-                aProgress.textContent = `분석 완료 (총 ${total}개)`;
-                saveToHistory(min, max, iter);
-            }
+            if (current <= max) setTimeout(process, 0); else { aProgress.textContent = `분석 완료 (총 ${total}개)`; saveToHistory(min, max, iter); }
         }
         process();
     }
@@ -333,63 +323,42 @@
     function saveToHistory(min, max, iter) {
         const cycleCount = fullResults.cycle.length;
         const avgCycleLen = cycleCount > 0 ? (fullResults.cycle.reduce((acc, cur) => acc + cur.cycleValues.length, 0) / cycleCount).toFixed(2) : 0;
-        
-        const divReasons = fullResults.divergent.reduce((acc, cur) => {
-            acc[cur.reason] = (acc[cur.reason] || 0) + 1;
-            return acc;
-        }, {});
-
-        const newRecord = {
-            id: Date.now(), // 고유 ID 추가
-            timestamp: new Date().toLocaleString(),
-            range: `${min} ~ ${max}`,
-            iter,
-            counts: { fixed: fullResults.fixed.length, cycle: cycleCount, divergent: fullResults.divergent.length },
-            avgCycleLen,
-            divReasons
-        };
-
-        historyRecords.unshift(newRecord);
-        localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
+        const divReasons = fullResults.divergent.reduce((acc, cur) => { acc[cur.reason] = (acc[cur.reason] || 0) + 1; return acc; }, {});
+        const newRecord = { id: Date.now(), timestamp: new Date().toLocaleString(), range: `${min} ~ ${max}`, iter, counts: { fixed: fullResults.fixed.length, cycle: cycleCount, divergent: fullResults.divergent.length }, avgCycleLen, divReasons };
+        historyRecords.unshift(newRecord); localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
     }
 
     function deleteRecord(id) {
         if (!confirm('이 기록을 삭제하시겠습니까?')) return;
-        historyRecords = historyRecords.filter(r => r.id !== id);
-        localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
-        renderHistory();
+        historyRecords = historyRecords.filter(r => r.id !== id); localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords)); renderHistory();
+    }
+
+    function drawBarChart() {
+        const r = aCanvas.parentElement.getBoundingClientRect(); aCanvas.width = r.width; aCanvas.height = r.height;
+        aCtx.clearRect(0,0,aCanvas.width,aCanvas.height); barRects = [];
+        const cats = [ {key:'fixed', label:'Fixed Point', color:'#10b981'}, {key:'cycle', label:'Cycle', color:'#f59e0b'}, {key:'divergent', label:'Divergent', color:'#ef4444'} ];
+        const maxCount = Math.max(...cats.map(c => fullResults[c.key].length), 1);
+        cats.forEach((cat, i) => {
+            const count = fullResults[cat.key].length;
+            const h = (count/maxCount)*(aCanvas.height*0.6), w = aCanvas.width*0.15, x = (aCanvas.width/4)*(i+1)-w/2, y = aCanvas.height*0.8-h;
+            aCtx.fillStyle = cat.color; aCtx.fillRect(x, y, w, h);
+            aCtx.fillStyle = 'white'; aCtx.font = 'bold 1.2rem Pretendard'; aCtx.textAlign = 'center'; aCtx.fillText(count, x+w/2, y-15);
+            const labelY = aCanvas.height * 0.8 + 35; aCtx.fillStyle = cat.color; aCtx.fillText(cat.label, x+w/2, labelY);
+            const textWidth = aCtx.measureText(cat.label).width;
+            barRects.push({ x: x + w/2 - textWidth/2 - 20, y: labelY - 25, w: textWidth + 40, h: 40, key: cat.key });
+            aCtx.beginPath(); aCtx.moveTo(x+w/2-textWidth/2, labelY+5); aCtx.lineTo(x+w/2+textWidth/2, labelY+5); aCtx.strokeStyle = cat.color; aCtx.lineWidth = 2; aCtx.stroke();
+        });
     }
 
     function renderHistory() {
         const grid = document.getElementById('historyGrid');
         grid.innerHTML = historyRecords.length === 0 ? '<p style="grid-column: 1/-1; text-align: center; color: #94a3b8;">아직 기록된 분석이 없습니다.</p>' : '';
         historyRecords.forEach(rec => {
-            const card = document.createElement('div');
-            card.className = 'result-card history-card';
+            const card = document.createElement('div'); card.className = 'result-card history-card';
             let divReasonHtml = Object.entries(rec.divReasons).map(([r, c]) => `<li>${r}: ${c}건</li>`).join('');
-            
-            const delBtn = document.createElement('button');
-            delBtn.className = 'delete-btn';
-            delBtn.textContent = '삭제';
-            delBtn.onclick = (e) => { e.stopPropagation(); deleteRecord(rec.id); };
-
-            card.innerHTML = `
-                <span class="stat-label">${rec.timestamp}</span>
-                <h4>범위: ${rec.range}</h4>
-                <p>최대 반복: ${rec.iter}회</p>
-                <div class="history-summary">
-                    <div class="summary-item"><span class="stat-label">Fixed</span><span class="num" style="color:var(--fixed)">${rec.counts.fixed}</span></div>
-                    <div class="summary-item"><span class="stat-label">Cycle</span><span class="num" style="color:var(--cycle)">${rec.counts.cycle}</span></div>
-                    <div class="summary-item"><span class="stat-label">Divergent</span><span class="num" style="color:var(--divergent)">${rec.counts.divergent}</span></div>
-                </div>
-                <div style="margin-top: 1rem; font-size: 0.9rem;">
-                    <p><b>평균 주기 길이:</b> ${rec.avgCycleLen}</p>
-                    <p><b>발산 사유:</b></p>
-                    <ul style="margin: 0; padding-left: 1.2rem; color: #94a3b8;">${divReasonHtml || '없음'}</ul>
-                </div>
-            `;
-            card.appendChild(delBtn);
-            grid.appendChild(card);
+            const delBtn = document.createElement('button'); delBtn.className = 'delete-btn'; delBtn.textContent = '삭제'; delBtn.onclick = (e) => { e.stopPropagation(); deleteRecord(rec.id); };
+            card.innerHTML = `<span class="stat-label">${rec.timestamp}</span><h4>범위: ${rec.range}</h4><p>최대 반복: ${rec.iter}회</p><div class="history-summary"><div class="summary-item"><span class="stat-label">Fixed</span><span class="num" style="color:var(--fixed)">${rec.counts.fixed}</span></div><div class="summary-item"><span class="stat-label">Cycle</span><span class="num" style="color:var(--cycle)">${rec.counts.cycle}</span></div><div class="summary-item"><span class="stat-label">Divergent</span><span class="num" style="color:var(--divergent)">${rec.counts.divergent}</span></div></div><div style="margin-top: 1rem; font-size: 0.9rem;"><p><b>평균 주기 길이:</b> ${rec.avgCycleLen}</p><p><b>발산 사유:</b></p><ul style="margin: 0; padding-left: 1.2rem; color: #94a3b8;">${divReasonHtml || '없음'}</ul></div>`;
+            card.appendChild(delBtn); grid.appendChild(card);
         });
     }
 
@@ -400,11 +369,8 @@
         const grid = document.getElementById('detailsGrid'); grid.innerHTML = '';
         data.forEach(item => {
             const card = document.createElement('div'); card.className = `result-card ${item.type}`;
-            let extra = item.type === 'fixed' ? `<p>최종 고정점: <span class="val">${item.fixedPoint}</span></p>` :
-                        item.type === 'cycle' ? `<p>주기 길이: ${item.cycleValues.length}</p><p>구성: <span class="val">${item.cycleValues.join(', ')}</span></p>` :
-                        `<p>사유: <span style="color:var(--divergent)">${item.reason}</span></p>`;
-            card.innerHTML = `<h4>시작값: ${item.startValue}</h4>${extra}`;
-            grid.appendChild(card);
+            let extra = item.type === 'fixed' ? `<p>최종 고정점: <span class="val">${item.fixedPoint}</span></p>` : item.type === 'cycle' ? `<p>주기 길이: ${item.cycleValues.length}</p><p>구성: <span class="val">${item.cycleValues.join(', ')}</span></p>` : `<p>사유: <span style="color:var(--divergent)">${item.reason}</span></p>`;
+            card.innerHTML = `<h4>시작값: ${item.startValue}</h4>${extra}`; grid.appendChild(card);
         });
         switchView('details');
     }
@@ -415,15 +381,10 @@
         if (hit) showDetails(hit.key);
     });
 
-    /** 초기화 **/
-    document.getElementById('runBtn').addEventListener('click', () => { generateGraphData(); startVisAnimation(); });
-    document.getElementById('analysisBtn').addEventListener('click', runAnalysis);
-    window.addEventListener('resize', () => { drawBarChart(); const r = gCanvas.parentElement.getBoundingClientRect(); gCanvas.width=r.width; gCanvas.height=r.height; });
-    window.onload = () => { window.dispatchEvent(new Event('resize')); generateGraphData(); startVisAnimation(); };
-
+    /** 인터랙션: 클릭 시 상세 정보 표시 복구 및 드래그 **/
     gCanvas.addEventListener('mousedown', (e) => {
         const rect = gCanvas.getBoundingClientRect(), mx = e.clientX-rect.left, my = e.clientY-rect.top;
-        const found = nodes.find(n => Math.sqrt((n.x-mx)**2+(n.y-my)**2) < NODE_RADIUS);
+        const found = nodes.find(n => Math.sqrt((n.x-mx)**2+(n.y-my)**2) < NODE_RADIUS + 10); // 클릭 반경 보정
         if (found) {
             draggedNode = found; selectedNode = found; simulationAlpha = 0.5;
             document.getElementById('info-panel').style.display = 'block';
@@ -433,6 +394,12 @@
     });
     window.addEventListener('mousemove', (e) => { if (draggedNode) { const r = gCanvas.getBoundingClientRect(); draggedNode.x = e.clientX-r.left; draggedNode.y = e.clientY-r.top; simulationAlpha = 0.2; } });
     window.addEventListener('mouseup', () => draggedNode = null);
+
+    /** 초기화 **/
+    document.getElementById('runBtn').addEventListener('click', () => { generateGraphData(); startVisAnimation(); });
+    document.getElementById('analysisBtn').addEventListener('click', runAnalysis);
+    window.addEventListener('resize', () => { drawBarChart(); const r = gCanvas.parentElement.getBoundingClientRect(); gCanvas.width=r.width; gCanvas.height=r.height; });
+    window.onload = () => { window.dispatchEvent(new Event('resize')); generateGraphData(); startVisAnimation(); };
 </script>
 </body>
 </html>
