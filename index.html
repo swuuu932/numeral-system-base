@@ -105,6 +105,24 @@
         .summary-item { text-align: center; }
         .summary-item .num { display: block; font-size: 1.25rem; font-weight: bold; }
 
+        .delete-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--divergent);
+            border: 1px solid var(--divergent);
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .delete-btn:hover {
+            background: var(--divergent);
+            color: white;
+        }
+
         /* UI Elements */
         h1 { font-size: 1.75rem; margin: 0; color: var(--primary); }
         .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -322,6 +340,7 @@
         }, {});
 
         const newRecord = {
+            id: Date.now(), // 고유 ID 추가
             timestamp: new Date().toLocaleString(),
             range: `${min} ~ ${max}`,
             iter,
@@ -331,27 +350,14 @@
         };
 
         historyRecords.unshift(newRecord);
-        // localStorage에 저장 (BigInt가 없으므로 문자열 상태로 저장됨)
         localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
     }
 
-    function drawBarChart() {
-        const r = aCanvas.parentElement.getBoundingClientRect(); aCanvas.width = r.width; aCanvas.height = r.height;
-        aCtx.clearRect(0,0,aCanvas.width,aCanvas.height); barRects = [];
-        const cats = [ {key:'fixed', label:'Fixed Point', color:'#10b981'}, {key:'cycle', label:'Cycle', color:'#f59e0b'}, {key:'divergent', label:'Divergent', color:'#ef4444'} ];
-        const maxCount = Math.max(...cats.map(c => fullResults[c.key].length), 1);
-        cats.forEach((cat, i) => {
-            const count = fullResults[cat.key].length;
-            const h = (count/maxCount)*(aCanvas.height*0.6), w = aCanvas.width*0.15, x = (aCanvas.width/4)*(i+1)-w/2, y = aCanvas.height*0.8-h;
-            aCtx.fillStyle = cat.color; aCtx.fillRect(x, y, w, h);
-            aCtx.fillStyle = 'white'; aCtx.font = 'bold 1.2rem Pretendard'; aCtx.textAlign = 'center';
-            aCtx.fillText(count, x+w/2, y-15);
-            const labelY = aCanvas.height * 0.8 + 35;
-            aCtx.fillStyle = cat.color; aCtx.fillText(cat.label, x+w/2, labelY);
-            const textWidth = aCtx.measureText(cat.label).width;
-            barRects.push({ x: x + w/2 - textWidth/2 - 20, y: labelY - 25, w: textWidth + 40, h: 40, key: cat.key });
-            aCtx.beginPath(); aCtx.moveTo(x+w/2-textWidth/2, labelY+5); aCtx.lineTo(x+w/2+textWidth/2, labelY+5); aCtx.strokeStyle = cat.color; aCtx.lineWidth = 2; aCtx.stroke();
-        });
+    function deleteRecord(id) {
+        if (!confirm('이 기록을 삭제하시겠습니까?')) return;
+        historyRecords = historyRecords.filter(r => r.id !== id);
+        localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
+        renderHistory();
     }
 
     function renderHistory() {
@@ -361,6 +367,12 @@
             const card = document.createElement('div');
             card.className = 'result-card history-card';
             let divReasonHtml = Object.entries(rec.divReasons).map(([r, c]) => `<li>${r}: ${c}건</li>`).join('');
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'delete-btn';
+            delBtn.textContent = '삭제';
+            delBtn.onclick = (e) => { e.stopPropagation(); deleteRecord(rec.id); };
+
             card.innerHTML = `
                 <span class="stat-label">${rec.timestamp}</span>
                 <h4>범위: ${rec.range}</h4>
@@ -376,6 +388,7 @@
                     <ul style="margin: 0; padding-left: 1.2rem; color: #94a3b8;">${divReasonHtml || '없음'}</ul>
                 </div>
             `;
+            card.appendChild(delBtn);
             grid.appendChild(card);
         });
     }
