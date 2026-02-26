@@ -1,14 +1,359 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hello World</title>
-  <link href='/style.css' rel='stylesheet'>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>진법 변환 및 자리수 합 주기 시뮬레이션</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --fixed-color: #3b82f6; /* Blue */
+            --cycle2-color: #ef4444; /* Red */
+            --cycle3-color: #10b981; /* Green */
+            --terminated-color: #64748b; /* Gray */
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            max-width: 800px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 1100px;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 400px;
+            cursor: crosshair;
+            background-color: #0c111d;
+            border-radius: 0.5rem;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid #334155;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            font-size: 0.85rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .tooltip b {
+            color: #60a5fa;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .sequence {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .seq-item {
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .stats {
+            margin-top: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            border-bottom: 4px solid transparent;
+        }
+    </style>
 </head>
 <body>
-  <h1>Hello, world!</h1>
-  <button onclick="console.log('hello');">Press me</button>
-  <script defer type="text/javascript" src="/main.js"></script>
+
+    <header>
+        <h1>진법-자리수 합 반복 시뮬레이션</h1>
+        <p>1부터 1000까지의 자연수 N에 대해, 현재 진법에서의 자리수 합을 다음 진법으로 삼아 반복 변환합니다.<br>
+           도달하는 최종 상태(고정점 또는 주기)를 분류하여 시각화합니다.</p>
+    </header>
+
+    <div class="container">
+        <canvas id="simCanvas"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+        
+        <div class="legend">
+            <div class="legend-item"><div class="dot" style="background-color: var(--fixed-color);"></div> 고정점 (Period 1)</div>
+            <div class="legend-item"><div class="dot" style="background-color: var(--cycle2-color);"></div> 2주기 (Period 2)</div>
+            <div class="legend-item"><div class="dot" style="background-color: var(--cycle3-color);"></div> 3주기 이상</div>
+            <div class="legend-item"><div class="dot" style="background-color: var(--terminated-color);"></div> 중단 (Base ≤ 1)</div>
+        </div>
+    </div>
+
+    <div class="stats" id="statsContainer"></div>
+
+    <script>
+        /**
+         * 진법 변환 및 자리수 합 계산 시뮬레이터
+         */
+
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        const statsContainer = document.getElementById('statsContainer');
+
+        const NUM_COUNT = 1000;
+        const results = [];
+
+        /**
+         * 숫자 n을 base 진법으로 표현했을 때의 자리수 합을 반환
+         */
+        function getSumOfDigits(n, base) {
+            if (base <= 1) return 1;
+            let sum = 0;
+            let tempN = n;
+            while (tempN > 0) {
+                sum += tempN % base;
+                tempN = Math.floor(tempN / base);
+            }
+            return sum;
+        }
+
+        /**
+         * 각 숫자 N에 대해 주기성 분석
+         */
+        function analyzeNumber(n) {
+            let currentBase = 10; // 시작은 10진법
+            const history = [currentBase];
+            const sequence = [currentBase];
+            let period = 0;
+            let finalState = 'terminated'; // 기본값
+
+            for (let i = 0; i < 100; i++) {
+                const nextBase = getSumOfDigits(n, currentBase);
+                
+                if (nextBase <= 1) {
+                    sequence.push(nextBase);
+                    finalState = 'terminated';
+                    period = 0;
+                    break;
+                }
+
+                const prevIndex = history.indexOf(nextBase);
+                if (prevIndex !== -1) {
+                    // 주기가 발견됨
+                    period = history.length - prevIndex;
+                    sequence.push(nextBase);
+                    if (period === 1) finalState = 'fixed';
+                    else if (period === 2) finalState = 'cycle2';
+                    else finalState = 'cycle3';
+                    break;
+                }
+
+                history.push(nextBase);
+                sequence.push(nextBase);
+                currentBase = nextBase;
+            }
+
+            return { n, finalState, period, sequence };
+        }
+
+        /**
+         * 초기화 및 데이터 계산
+         */
+        function init() {
+            for (let i = 1; i <= NUM_COUNT; i++) {
+                results.push(analyzeNumber(i));
+            }
+            render();
+            updateStats();
+        }
+
+        /**
+         * 캔버스 렌더링
+         */
+        function render() {
+            // 반응형 크기 조절
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const width = rect.width;
+            const height = rect.height;
+            const barWidth = width / NUM_COUNT;
+
+            ctx.clearRect(0, 0, width, height);
+
+            results.forEach((res, i) => {
+                let color;
+                switch (res.finalState) {
+                    case 'fixed': color = '#3b82f6'; break;
+                    case 'cycle2': color = '#ef4444'; break;
+                    case 'cycle3': color = '#10b981'; break;
+                    default: color = '#475569'; break;
+                }
+
+                const x = i * barWidth;
+                // 주기가 길수록 혹은 값이 클수록 높이를 다르게 표현할 수 있으나, 
+                // 여기서는 규칙에 따라 상태별 색상 막대로 표시
+                const barHeight = res.period === 0 ? 20 : 40 + (res.period * 20);
+                
+                ctx.fillStyle = color;
+                // 세로 중앙에 배치
+                ctx.fillRect(x, height / 2 - barHeight / 2, Math.max(1, barWidth - 0.5), barHeight);
+                
+                // 마우스 오버 시 하이라이트 효과를 위한 보이지 않는 영역은 처리하지 않고 
+                // 아래의 mousemove 이벤트를 사용함
+            });
+        }
+
+        /**
+         * 통계 업데이트
+         */
+        function updateStats() {
+            const counts = {
+                fixed: results.filter(r => r.finalState === 'fixed').length,
+                cycle2: results.filter(r => r.finalState === 'cycle2').length,
+                cycle3: results.filter(r => r.finalState === 'cycle3').length,
+                terminated: results.filter(r => r.finalState === 'terminated').length
+            };
+
+            const labels = {
+                fixed: '고정점',
+                cycle2: '2주기',
+                cycle3: '3주기 이상',
+                terminated: '중단됨'
+            };
+
+            const colors = {
+                fixed: 'var(--fixed-color)',
+                cycle2: 'var(--cycle2-color)',
+                cycle3: 'var(--cycle3-color)',
+                terminated: 'var(--terminated-color)'
+            };
+
+            statsContainer.innerHTML = Object.entries(counts).map(([key, val]) => `
+                <div class="stat-card" style="border-bottom-color: ${colors[key]}">
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${labels[key]}</div>
+                    <div style="font-size: 1.5rem; font-weight: bold;">${val}</div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * 상호작용: 마우스 이동에 따른 툴팁 표시
+         */
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const index = Math.floor((x / rect.width) * NUM_COUNT);
+
+            if (index >= 0 && index < NUM_COUNT) {
+                const res = results[index];
+                tooltip.style.display = 'block';
+                tooltip.style.left = `${e.clientX - rect.left + 20}px`;
+                tooltip.style.top = `${e.clientY - rect.top + 20}px`;
+
+                let stateText = '';
+                if (res.finalState === 'fixed') stateText = '고정점 (Period 1)';
+                else if (res.finalState === 'cycle2') stateText = '2주기 (Period 2)';
+                else if (res.finalState === 'cycle3') stateText = `주기적 (Period ${res.period})`;
+                else stateText = '중단 (Base ≤ 1)';
+
+                tooltip.innerHTML = `
+                    <b>숫자: ${res.n}</b>
+                    <div>상태: ${stateText}</div>
+                    <div class="sequence">
+                        변화 과정: ${res.sequence.map(s => `<span class="seq-item">${s}</span>`).join(' → ')}
+                    </div>
+                `;
+            } else {
+                tooltip.style.display = 'none';
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+        });
+
+        // 초기 실행
+        init();
+
+        // 창 크기 조절 대응
+        window.addEventListener('resize', render);
+    </script>
 </body>
 </html>
