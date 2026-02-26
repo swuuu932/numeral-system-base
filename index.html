@@ -293,7 +293,7 @@
             if (state.next === current) return { startValue: startN, type: 'fixed', fixedPoint: current };
             if (historySet.has(state.next)) {
                 // 정확한 주기 슬라이싱: 첫 발생 지점부터 현재 숫자까지가 하나의 주기
-                const cycleArr = history.slice(history.indexOf(state.next)).concat(current);
+                const cycleArr = history.slice(history.indexOf(state.next));
                 return { startValue: startN, type: 'cycle', cycleValues: cycleArr };
             }
             if (state.next.toString().length > 10000) return { startValue: startN, type: 'divergent', reason: '자릿수 10,000자 초과' };
@@ -330,13 +330,23 @@
         const cycleCount = fullResults.cycle.length;
         const avgCycleLen = cycleCount > 0 ? (fullResults.cycle.reduce((acc, cur) => acc + cur.cycleValues.length, 0) / cycleCount).toFixed(2) : 0;
         const divReasons = fullResults.divergent.reduce((acc, cur) => { acc[cur.reason] = (acc[cur.reason] || 0) + 1; return acc; }, {});
-        const newRecord = { id: Date.now(), timestamp: new Date().toLocaleString(), range: `${min} ~ ${max}`, iter, counts: { fixed: fullResults.fixed.length, cycle: cycleCount, divergent: fullResults.divergent.length }, avgCycleLen, divReasons };
+        const newRecord = { id: Date.now(), timestamp: new Date().toLocaleString(), min: min.toString(), max: max.toString(), range: `${min} ~ ${max}`, iter, counts: { fixed: fullResults.fixed.length, cycle: cycleCount, divergent: fullResults.divergent.length }, avgCycleLen, divReasons };
         historyRecords.unshift(newRecord); localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords));
     }
 
     function deleteRecord(id) {
         if (!confirm('이 기록을 삭제하시겠습니까?')) return;
         historyRecords = historyRecords.filter(r => r.id !== id); localStorage.setItem('numeral_sim_history', JSON.stringify(historyRecords)); renderHistory();
+    }
+
+    function viewRecord(id) {
+        const rec = historyRecords.find(r => r.id === id);
+        if (!rec) return;
+        document.getElementById('minStart').value = rec.min || rec.range.split(' ~ ')[0];
+        document.getElementById('maxStart').value = rec.max || rec.range.split(' ~ ')[1];
+        document.getElementById('rangeIter').value = rec.iter;
+        switchView('analysis');
+        runAnalysis();
     }
 
     function drawBarChart() {
@@ -356,17 +366,44 @@
         });
     }
 
-    function renderHistory() {
-        const grid = document.getElementById('historyGrid');
-        grid.innerHTML = historyRecords.length === 0 ? '<p style="grid-column: 1/-1; text-align: center; color: #94a3b8;">아직 기록된 분석이 없습니다.</p>' : '';
-        historyRecords.forEach(rec => {
-            const card = document.createElement('div'); card.className = 'result-card history-card';
-            let divReasonHtml = Object.entries(rec.divReasons).map(([r, c]) => `<li>${r}: ${c}건</li>`).join('');
-            const delBtn = document.createElement('button'); delBtn.className = 'delete-btn'; delBtn.textContent = '삭제'; delBtn.onclick = (e) => { e.stopPropagation(); deleteRecord(rec.id); };
-            card.innerHTML = `<span class="stat-label">${rec.timestamp}</span><h4>범위: ${rec.range}</h4><p>최대 반복: ${rec.iter}회</p><div class="history-summary"><div class="summary-item"><span class="stat-label">Fixed</span><span class="num" style="color:var(--fixed)">${rec.counts.fixed}</span></div><div class="summary-item"><span class="stat-label">Cycle</span><span class="num" style="color:var(--cycle)">${rec.counts.cycle}</span></div><div class="summary-item"><span class="stat-label">Divergent</span><span class="num" style="color:var(--divergent)">${rec.counts.divergent}</span></div></div><div style="margin-top: 1rem; font-size: 0.9rem;"><p><b>평균 주기 길이:</b> ${rec.avgCycleLen}</p><p><b>발산 사유:</b></p><ul style="margin: 0; padding-left: 1.2rem; color: #94a3b8;">${divReasonHtml || '없음'}</ul></div>`;
-            card.appendChild(delBtn); grid.appendChild(card);
-        });
-    }
+        function renderHistory() {
+            const grid = document.getElementById('historyGrid');
+            grid.innerHTML = historyRecords.length === 0 ? '<p style="grid-column: 1/-1; text-align: center; color: #94a3b8;">아직 기록된 분석이 없습니다.</p>' : '';
+            historyRecords.forEach(rec => {
+                const card = document.createElement('div');
+                card.className = 'result-card history-card';
+                let divReasonHtml = Object.entries(rec.divReasons).map(([r, c]) => `<li>${r}: ${c}건</li>`).join('');
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.textContent = '삭제';
+                delBtn.onclick = (e) => { e.stopPropagation(); deleteRecord(rec.id); };
+    
+                const viewBtn = document.createElement('button');
+                viewBtn.className = 'view-btn';
+                viewBtn.textContent = '보기';
+                viewBtn.onclick = (e) => { e.stopPropagation(); viewRecord(rec.id); };
+    
+                card.innerHTML = `
+                    <span class="stat-label">${rec.timestamp}</span>
+                    <h4>범위: ${rec.range}</h4>
+                    <p>최대 반복: ${rec.iter}회</p>
+                    <div class="history-summary">
+                        <div class="summary-item"><span class="stat-label">Fixed</span><span class="num" style="color:var(--fixed)">${rec.counts.fixed}</span></div>
+                        <div class="summary-item"><span class="stat-label">Cycle</span><span class="num" style="color:var(--cycle)">${rec.counts.cycle}</span></div>
+                        <div class="summary-item"><span class="stat-label">Divergent</span><span class="num" style="color:var(--divergent)">${rec.counts.divergent}</span></div>
+                    </div>
+                    <div style="margin-top: 1rem; font-size: 0.9rem;">
+                        <p><b>평균 주기 길이:</b> ${rec.avgCycleLen}</p>
+                        <p><b>발산 사유:</b></p>
+                        <ul style="margin: 0; padding-left: 1.2rem; color: #94a3b8;">${divReasonHtml || '없음'}</ul>
+                    </div>
+                `;
+                card.appendChild(delBtn);
+                card.appendChild(viewBtn);
+                grid.appendChild(card);
+            });
+        }
 
     function showDetails(categoryKey) {
         const data = fullResults[categoryKey];
@@ -408,4 +445,4 @@
     window.onload = () => { window.dispatchEvent(new Event('resize')); generateGraphData(); startVisAnimation(); };
 </script>
 </body>
-</html> you
+</html> 
