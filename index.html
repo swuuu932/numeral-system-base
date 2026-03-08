@@ -236,31 +236,32 @@
         if (!valStr) { analysisEl.textContent = "숫자를 입력하세요."; return; }
         try {
             const n = BigInt(valStr);
-            const b = getDigitSum(n);
-            const types = [];
+            const iter = parseInt(document.getElementById('maxIter').value) || 30;
+            const result = classifyDetailed(n, iter);
             
-            // 기본 분류
-            types.push(n % 2n === 0n ? "짝수(Even)" : "홀수(Odd)");
-            
-            // 하샤드 수 (자릿수 합으로 나누어 떨어지는 수)
-            if (b > 0n && n % b === 0n) types.push("하샤드 수(Harshad)");
+            let typeLabel = "";
+            let color = "#10b981";
 
-            // 진법 형태 분류
-            const digits = valStr.split('');
-            const maxD = Math.max(...digits.map(d => parseInt(d) || 0));
-            if (maxD <= 1) types.push("이진수 형태");
-            else if (maxD <= 7) types.push("8진수 형태");
+            if (result.type === 'fixed') {
+                typeLabel = "유형: 고정되는 수 (Fixed Point)";
+                color = "#10b981";
+            } else if (result.type === 'cycle') {
+                typeLabel = `유형: 주기가 생기는 수 (Cycle, 길이: ${result.cycleValues.length})`;
+                color = "#f59e0b";
+            } else {
+                typeLabel = `유형: 발산 또는 제한 초과 (Divergent/Limit)`;
+                color = "#ef4444";
+            }
             
-            types.push(`자릿수 합(b): ${b}`);
-            
-            analysisEl.textContent = "분류: " + types.join(" | ");
-            analysisEl.style.color = "#10b981";
+            analysisEl.textContent = typeLabel;
+            analysisEl.style.color = color;
         } catch(e) {
             analysisEl.textContent = "유효하지 않은 숫자 형식입니다.";
             analysisEl.style.color = "#ef4444";
         }
     }
     document.getElementById('startN').addEventListener('input', updateNumberAnalysis);
+    document.getElementById('maxIter').addEventListener('input', updateNumberAnalysis);
 
     function generateGraphData() {
         nodes = []; edges = []; simulationAlpha = 1.0; selectedNode = null;

@@ -11,7 +11,7 @@ For a current integer $N$:
 3.  **Re-interpret**: Parse the resulting string as a decimal integer to get the next state.
 
 ## Features
--   **Number Type Analysis**: Automatically classifies the input number $N$ based on properties like parity, digit sum, Harshad number status, and base-like patterns (e.g., Binary-like).
+-   **Number Type Analysis**: Automatically classifies the input number $N$ into one of three behavioral categories: **Fixed Point** (converges to a single value), **Cycle** (enters a repeating sequence), or **Divergent** (exceeds size limits or iteration counts).
 -   **Interactive Input**: Users can set the starting number $N$ and the maximum number of iterations.
 -   **Graph Visualization**:
     -   **Nodes**: Represent each unique number in the sequence.
