@@ -328,13 +328,17 @@
         for (let i = 0; i < maxIter; i++) {
             const state = getNextState(current);
             if (state.next === current) return { startValue: startN, type: 'fixed', fixedPoint: current };
+            
+            history.push(current);
+            historySet.add(current);
+
             if (historySet.has(state.next)) {
                 // 정확한 주기 슬라이싱: 첫 발생 지점부터 현재 숫자까지가 하나의 주기
                 const cycleArr = history.slice(history.indexOf(state.next));
                 return { startValue: startN, type: 'cycle', cycleValues: cycleArr };
             }
             if (state.next.toString().length > 10000) return { startValue: startN, type: 'divergent', reason: '자릿수 10,000자 초과' };
-            history.push(current); historySet.add(current); current = state.next;
+            current = state.next;
         }
         return { startValue: startN, type: 'divergent', reason: '반복 횟수 제한 초과' };
     }
